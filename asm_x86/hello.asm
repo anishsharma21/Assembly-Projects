@@ -1,3 +1,4 @@
+# this isn't actually x86 - previous commits had x86 assembly, but I modified the Dockerfile in several experiments, just been too lazy to revert everything back...
 .section .data
     hello: .ascii "Hello, world!\n"
 
