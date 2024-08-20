@@ -64,21 +64,41 @@ This repository is dedicated to exploring early programming languages, starting 
 You can create an assembly file, for example `hello.asm`, in your repository:
 
 ```asm
-section .data
-    hello db 'Hello, world!',0
+.section .data
+    hello: .ascii "Hello, world!\n"
 
-section .text
-    global _start
+.section .text
+    .global _start
 
 _start:
-    ; write our string to stdout
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, hello
-    mov edx, 13
-    int 0x80
+    mov x0, 1          
+    ldr x1, =hello     
+    mov x2, 14         
+    mov x8, 64         
+    svc 0              
 
-    ; exit
-    mov eax, 1
-    xor ebx, ebx
-    int 0x80
+    mov x0, 0          
+    mov x8, 93         
+    svc 0 
+```
+
+## Assembling and executing assembly code
+
+First assemble your code:
+
+```sh
+as -o hello.o hello.asm
+```
+
+Then link the object file created
+
+```sh
+ld -o hello hello.o
+```
+This will create the executable `hello` in the same directory. You can confirm this by using the `ls` command and seeing 3 files appear: `hello.asm`, `hello.o`, and `hello`.
+You can run `hello` with the following command:
+
+```sh
+./hello
+```
+
