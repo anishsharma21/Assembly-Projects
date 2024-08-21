@@ -1,9 +1,9 @@
-.section .data
+section .data
 
-.section .text
-.globl _start
+section .text
+global _start
 
 _start:
-  movl $1, %eax
-  movl $0, %ebx
-  int $0x80
+  mov eax, 1
+  mov ebx, 0
+  int 0x80
