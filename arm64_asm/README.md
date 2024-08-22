@@ -105,7 +105,7 @@ quit
 If you're unsure of the symbol names, use:
 
 ```sh
-image dump symtab exit
+image dump symtab filename
 ```
 
 ## Example Program for Debugging
