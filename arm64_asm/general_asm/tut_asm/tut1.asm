@@ -10,6 +10,6 @@ _main:
 
 	mov x0, #0
 	mov x16, #1
-	svc #0xfff
+	svc #0
 
 helloworld: 	.ascii "Hello M1-World!\n"
