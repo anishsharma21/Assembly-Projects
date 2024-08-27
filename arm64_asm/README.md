@@ -1,4 +1,4 @@
-# How to Assemble and Link ARM64 RISC Assembly Programs on M3 MacBook Pro
+# How to Assemble and Link ARM64 RISC Assembly Programs on Apple Silicon MacOS
 
 ## Prerequisites
 

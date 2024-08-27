@@ -1,7 +1,7 @@
-    .data
+    .data         # data section
 
-    .text
+    .text         # code section
 
 main:
-    li $v0, 10
-    syscall
+    li $v0, 10    # syscall 10 is exit
+    syscall       # call the kernel
