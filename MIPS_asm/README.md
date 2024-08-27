@@ -55,4 +55,6 @@ main:
 
 Running this program should print "Hello, World!" to the terminal.
 
+This link [here](https://minnie.tuhs.org/CompArch/Resources/mips_quick_tutorial.html#IOSystemCalls) is a great resource to get the basics of MIPS assembly programming down - it even provides a template which all programs must use. Read it top-to-bottom and you'll have all the knowledge you need to build some pretty neat programs.
+
 You can also run the `spim` simulator in its environment, i.e. not in the default terminal environment by just running the command `spim`. After this, you can run the command `load "{filename}"`, or in this case, `load "exit.s"` and then `run` to start running the program. You can use the command `step` to step through the program. You can use `print $reg` to print specific registers, e.g. `print $0` to print the first register. You can see all the registers using `print_all_regs`. [This link](https://course.ccs.neu.edu/csu4410/spim_documentation.pdf) is a 25 page breakdown of how to use SPIM, and [this link](https://pages.cs.wisc.edu/~larus/spim.pdf) is a 2 page concise summary.
