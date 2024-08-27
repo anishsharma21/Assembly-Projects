@@ -1,8 +1,9 @@
-        .data
+.data
 
-var1:   .word 23 
+var1: .word 23 
 
-        .text
+.text
+
 main:
     li $t0, 10
     add $t0, $t0, 10
