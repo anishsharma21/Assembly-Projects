@@ -22,14 +22,14 @@ main:
     syscall       # call the kernel
 ```
 
-Save this file as `exit.asm`.
+Save this file as `exit.s`.
 
 ## Running the MIPS program
 
 Run the following command:
 
 ```sh
-spim -file exit.asm
+spim -file exit.s
 ```
 
 This will run the file, and since it only exits, nothing will happen (which is good).
@@ -55,4 +55,4 @@ main:
 
 Running this program should print "Hello, World!" to the terminal.
 
-You can also run the `spim` simulator in its environment, i.e. not in the default terminal environment by just running the command `spim`. After this, you can run the command `load "{filename}"`, or in this case, `load "exit.asm"` and then `run` to start running the program. You can use the command `step` to step through the program. You can use `print $reg` to print specific registers, e.g. `print $0` to print the first register. You can see all the registers using `print_all_regs`. [This link](https://course.ccs.neu.edu/csu4410/spim_documentation.pdf) is a 25 page breakdown of how to use SPIM, and [this link](https://pages.cs.wisc.edu/~larus/spim.pdf) is a 2 page concise summary.
+You can also run the `spim` simulator in its environment, i.e. not in the default terminal environment by just running the command `spim`. After this, you can run the command `load "{filename}"`, or in this case, `load "exit.s"` and then `run` to start running the program. You can use the command `step` to step through the program. You can use `print $reg` to print specific registers, e.g. `print $0` to print the first register. You can see all the registers using `print_all_regs`. [This link](https://course.ccs.neu.edu/csu4410/spim_documentation.pdf) is a 25 page breakdown of how to use SPIM, and [this link](https://pages.cs.wisc.edu/~larus/spim.pdf) is a 2 page concise summary.
