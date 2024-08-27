@@ -9,14 +9,15 @@ array: .word 1, 2, 3, 4, 5
 main:
     li $t0, 0                   # running sum
     la $t1, array               # array address
-    li $t2, 16                  # final index
+    move $t2, $t1               # set base of final index
+    addi $t2, 16                # final index with length offset
     j loop
 
 loop:
     lw $t3, 0($t1)
     add $t0, $t0, $t3
-    addu $t1, 4
     beq $t1, $t2, printsum      # print sum if end of array
+    addu $t1, 4
     j loop
 
 printsum:
