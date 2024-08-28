@@ -2,6 +2,7 @@
 .align 2
 
 array: .word 1, 2, 3, 4, 5
+newline: .asciiz "\n"
 
 .text
 .globl main
@@ -23,6 +24,9 @@ loop:
 printsum:
     move $a0, $t0
     li $v0, 1
+    syscall
+    li $v0, 4
+    la $a0, newline
     syscall
     j end
     
