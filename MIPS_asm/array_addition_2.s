@@ -3,7 +3,7 @@
 .data
 .align 2
 
-array: .word 5, 1, 2, 3, 4, 5           # first word is length of array
+array: .word 5, 1, 9, 3, 4, 5           # first word is length of array
 newline: .asciiz "\n"
 
 .text
