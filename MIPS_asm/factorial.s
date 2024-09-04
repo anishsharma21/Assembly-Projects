@@ -23,7 +23,7 @@ factorial:
     jr $ra
 
 L1:
-    addi $a0, $a0, 1
+    addi $a0, $a0, -1
     jal factorial
     lw $a0, 0($sp)
     lw $ra, 4($sp)
@@ -32,8 +32,11 @@ L1:
     jr $ra
 
 printsum:
-    move $a0, $s0
+    move $a0, $v0
     li $v0, 1
+    syscall
+    la $a0, newline
+    li $v0, 4
     syscall
     jr $ra
 
