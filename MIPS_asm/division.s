@@ -2,7 +2,7 @@
 .align 2
 
 newline: .asciiz "\n"
-dividend: .word 20
+dividend: .word 21
 divisor: .word 4
 
 .text
@@ -10,7 +10,9 @@ divisor: .word 4
 
 main:
     la $a0, dividend
+    lw $a0, 0($a0)
     la $a1, divisor
+    lw $a1, 0($a1)
     li $v0, 0                   # quotient
     li $v1, 0                   # remainder
     jal divide
@@ -34,7 +36,7 @@ printout:
     la $a0, newline
     li $v0, 4
     syscall
-    move $a0, $a1
+    move $a0, $v1
     li $v0, 1
     syscall
     la $a0, newline
