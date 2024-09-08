@@ -13,9 +13,7 @@ separator: .asciiz ", "
 .globl main
 
 main:
-    la $a0, array
-    lw $a1, ($a0)
-    jal printarr                            # initial array print
+    jal printarrsetup                       # initial array print
     la $a0, array                           # base address of array
     lw $a1, ($a0)                           # length of array
     addi $a0, 4                             # first value in array
@@ -25,7 +23,7 @@ main:
 
 reverse:
     sub $t1, $a1, $t0                       # index of swap value in t1
-    blt $t1, $t0, printarr                  # if high idx lower than low idx, print reversed arr
+    blt $t1, $t0, printarrsetup             # if high idx lower than low idx, print reversed arr
     sll $t1, $t1, 2                         # multiplies by 4 for word length
 
     add $t4, $t0, $zero                     # copy of index
@@ -42,6 +40,11 @@ reverse:
     addi $a0, 4                             # next value
     addi $t0, 1                             # next index
     j reverse
+
+printarrsetup:
+    la $a0, array
+    lw $a1, ($a0)
+    j printarr
 
 printarr:
     li $v0, 1
