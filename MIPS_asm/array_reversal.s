@@ -1,16 +1,18 @@
 .data
 
 .align 2
-array: .word 5, -3, 4, 18, 9, -4
+array: .word 5, -3, 4, 18, 9, -9
 
 .align 2
 newline: .asciiz "\n"
+
+.align 2
+separator: .asciiz ", "
 
 .text
 .globl main
 
 main:
-    li $v0, 1                               # setting up syscall early
     la $a0, array
     lw $a1, ($a0)
     jal printarr                            # initial array print
@@ -42,10 +44,23 @@ reverse:
     j reverse
 
 printarr:
+    li $v0, 1
     addi $a0, 4
-    syscall                                 # no need to specify v0, already done
+    move $t0, $a0
+    lw $a0, ($a0)
+    syscall
     addi $a1, -1
-    bgt $a1, 0, printarr
+    blt $a1, 1, jump_r
+    la $a0, separator
+    li $v0, 4
+    syscall
+    move $a0, $t0
+    j printarr
+
+jump_r:
+    la $a0, newline
+    li $v0, 4
+    syscall
     jr $ra
 
 end:
