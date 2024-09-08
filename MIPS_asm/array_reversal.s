@@ -1,7 +1,7 @@
 .data
 
 .align 2
-array: .word 5, -3, 4, 18, 9, -9
+array: .word 6, -3, 4, 18, 9, -9, 3
 
 .align 2
 newline: .asciiz "\n"
