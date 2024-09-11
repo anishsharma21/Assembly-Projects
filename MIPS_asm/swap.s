@@ -16,12 +16,42 @@ main:
     li $v0, 4
     syscall
 
+    # pre-swap print
     la $a0, array
     lw $a1, ($a0)               # length of array
     addi $a0, 4
     li $a2, 0                   # cur idx
     jal print_arr
+
+    # swap
+    la $a0, array
+    lw $a1, ($a0)
+    addi $a0, 4
+    jal swap
+
+    la $a0, array_str
+    li $v0, 4
+    syscall
+
+    # post-swap print
+    la $a0, array
+    lw $a1, ($a0)
+    addi $a0, 4
+    li $a2, 0
+    jal print_arr
+
     j end
+
+swap:
+    move $t0, $a0
+    lw $t1, ($a0)
+    sll $a1, $a1, 2
+    addi $a1, -4
+    add $a0, $a0, $a1
+    lw $t2, ($a0)
+    sw $t2, ($t0)
+    sw $t1, ($a0)
+    jr $ra
 
 print_arr:
     move $t0, $a0
