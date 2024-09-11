@@ -15,17 +15,21 @@ main:
     la $a0, array_str
     li $v0, 4
     syscall
+
     la $a0, array
     lw $a1, ($a0)               # length of array
     addi $a0, 4
     li $a2, 0                   # cur idx
     jal print_arr
+    j end
 
 print_arr:
+    move $t0, $a0
     lw $a0, ($a0)
     li $v0, 1
     syscall
 
+    move $a0, $t0
     addi $a0, 4
     addi $a2, 1
 
@@ -45,3 +49,7 @@ jump_main:
     syscall
 
     jr $ra
+
+end:
+    li $v0, 10
+    syscall
