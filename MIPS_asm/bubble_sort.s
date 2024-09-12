@@ -9,7 +9,32 @@ newline: .asciiz "\n"
 .text
 
 main:
+    # print unsorted array
     la $a0, init_array_str
+    li $v0, 4
+    syscall
+
+    la $a0, array
+    lw $a1, ($a0)
+    addi $a0, 4
+    li $a2, 0
+    jal print_arr
+
+    la $a0, newline
+    li $v0, 4
+    syscall
+
+    # sort array
+    la $a0, array
+    lw $a1, ($a0)
+    move $s0, $a1                       # s0 for length - 1 copy
+    addi $s0, -1                        # useful for sort_p procedure
+    addi $a0, 4
+    li $a2, 0
+    jal bubble_sort
+
+    # print sorted array
+    la $a0, sorted_array_str
     li $v0, 4
     syscall
 
@@ -21,32 +46,36 @@ main:
 
     j end
 
-# a2 is cur idx, $t0 is next idx (for swap)
 bubble_sort:
-    beq $a2, $a1, end_sort                                  # end sort if cur idx == len arr
-    add $t0, $a2, 1                                         # otherwise, set next idx
-    bgt $t0, $a1, update_cur_idx                            # reset next idx if > than arr len
-
-    sll $a2, $a2, 2                                         # word length for cur idx
-    sll $t0, $t0, 2                                         # word length for next idx
-    add $t1, $a0, $a2                                       # cur idx mem addr
-    add $t2, $a0, $t0                                       # next idx mem addr
-    j swap
-
-update_cur_idx:
+    beq $a2, $a1, jump_back             # if idx == len arr, end sort
+    move $t0, $a2                       # t0 copy of cur idx (for temp mutability)
+    jal sort_p                          # jump to procedure
     addi $a2, 1
-    move $t0, $a2
     j bubble_sort
+
+sort_p:
+    beq $t0, $s0, jump_back             # end cur bubble sort iteration if second-last idx
+    move $t1, $t0                       # copy of cur idx to create next idx
+    addi $t1, 1                         # next idx (+1 of cur idx)
+    move $t2, $t0                       # move so shift left can be performed
+    move $t3, $t1                       # same but for next idx (not necessary but consistent)
+    sll $t2, $t2, 2
+    add $t2, $a0, $t2                   # address for cur idx
+    sll $t3, $t3, 2
+    add $t3, $a0, $t3                   # address for next idx
+    lw $t4, ($t2)                       # load value at cur idx
+    lw $t5, ($t3)                       # load value at next idx
+    bgt $t4, $t5, swap                  # if cur > next, swap
+    addi $t0, 1                         # increment cur idx for next iteration
+    j sort_p
 
 swap:
-    lw $t3, ($t1)
-    lw $t4, ($t2)
-    sw $t3, ($t2)
-    sw $t4, ($t1)
+    sw $t4, ($t3)
+    sw $t5, ($t2)
     addi $t0, 1
-    j bubble_sort
+    j sort_p
 
-end_sort:
+jump_back: 
     jr $ra
 
 print_arr:
