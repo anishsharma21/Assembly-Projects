@@ -2,6 +2,7 @@
 
 buffer: .space 20
 prompt: .asciiz "Type in a string: "
+newline: .asciiz "\n"
 
 .text
 
@@ -16,6 +17,14 @@ main:
     syscall
 
     la $a0, buffer
+    li $v0, 4
+    syscall
+
+    lb $a0, ($a0)
+    li $v0, 1
+    syscall
+
+    la $a0, newline
     li $v0, 4
     syscall
 
