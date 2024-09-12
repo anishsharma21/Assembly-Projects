@@ -20,16 +20,11 @@ main:
     li $a2, 0
     jal print_arr
 
-    la $a0, newline
-    li $v0, 4
-    syscall
-
     # sort array
     la $a0, array
     lw $a1, ($a0)
-    move $s0, $a1                       # s0 for length - 1 copy
-    addi $s0, -1                        # useful for sort_p procedure
     addi $a0, 4
+    addi $a1, -1                        # length - 1 for bubble sort
     li $a2, 0
     jal bubble_sort
 
@@ -49,12 +44,14 @@ main:
 bubble_sort:
     beq $a2, $a1, jump_back             # if idx == len arr, end sort
     move $t0, $a2                       # t0 copy of cur idx (for temp mutability)
+    addi $sp, -4
+    sw $ra, ($sp)
     jal sort_p                          # jump to procedure
     addi $a2, 1
     j bubble_sort
 
 sort_p:
-    beq $t0, $s0, jump_back             # end cur bubble sort iteration if second-last idx
+    beq $t0, $a1, jump_back             # end cur bubble sort iteration if second-last idx
     move $t1, $t0                       # copy of cur idx to create next idx
     addi $t1, 1                         # next idx (+1 of cur idx)
     move $t2, $t0                       # move so shift left can be performed
@@ -76,6 +73,8 @@ swap:
     j sort_p
 
 jump_back: 
+    lw $ra, ($sp)
+    addi $sp, 4
     jr $ra
 
 print_arr:
