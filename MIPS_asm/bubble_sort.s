@@ -25,7 +25,6 @@ main:
     lw $a1, ($a0)
     addi $a0, 4
     addi $a1, -1                        # length - 1 for bubble sort
-    li $a2, 0
     jal bubble_sort
 
     # print sorted array
@@ -42,27 +41,31 @@ main:
     j end
 
 bubble_sort:
-    beq $a2, $a1, jump_back             # if idx == len arr, end sort
-    move $t0, $a2                       # t0 copy of cur idx (for temp mutability)
+    blez $a1, jump_main                 # a1 starts at len, down to 0 when all covered
+    li $t0, 0                           # cur idx, always starts at 0, but ends at a2
     addi $sp, -4
     sw $ra, ($sp)
     jal sort_p                          # jump to procedure
-    addi $a2, 1
+    addi $a1, -1
     j bubble_sort
 
 sort_p:
-    beq $t0, $a1, jump_back             # end cur bubble sort iteration if second-last idx
+    beq $t0, $a1, jump_sort             # end cur bubble sort iteration if second-last idx
     move $t1, $t0                       # copy of cur idx to create next idx
     addi $t1, 1                         # next idx (+1 of cur idx)
+
     move $t2, $t0                       # move so shift left can be performed
     move $t3, $t1                       # same but for next idx (not necessary but consistent)
+
     sll $t2, $t2, 2
     add $t2, $a0, $t2                   # address for cur idx
     sll $t3, $t3, 2
     add $t3, $a0, $t3                   # address for next idx
+
     lw $t4, ($t2)                       # load value at cur idx
     lw $t5, ($t3)                       # load value at next idx
     bgt $t4, $t5, swap                  # if cur > next, swap
+
     addi $t0, 1                         # increment cur idx for next iteration
     j sort_p
 
@@ -72,7 +75,10 @@ swap:
     addi $t0, 1
     j sort_p
 
-jump_back: 
+jump_sort:
+    jr $ra
+
+jump_main:
     lw $ra, ($sp)
     addi $sp, 4
     jr $ra
