@@ -1,4 +1,11 @@
-# EarlyLangs
+# 🏛️ EarlyLangs
+
+## Summary and Highlights
+
+* Brief work in `x86` and `ARMv8` assembly
+* Over 30 `MIPS` assembly programs - key programs include:
+    * Recursive factorial implementation
+    * `malloc` and `free` in assembly (in progress)
 
 ## Introduction
 
