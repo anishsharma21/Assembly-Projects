@@ -3,8 +3,8 @@
 ## Summary and Highlights
 
 * Brief work in `x86` and `ARMv8` assembly
-* Over 30 `MIPS` programs - key assembly programs include:
-    * Recursive factorial & fibonnaci implementations
+* Over 30 `MIPS` assembly programs - wrote the following in `MIPS` assembly:
+    * Recursive factorial & fibonnaci (stack pointer manipulation)
     * Bubble sort, insertion sort
     * `malloc` and `free` in assembly (in progress)
 
