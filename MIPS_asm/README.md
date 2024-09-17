@@ -13,9 +13,9 @@ brew install spim
 Here's a simple example that starts and then immediately exits:
 
 ```mips
-    .data         # data section
+.data       # static data section
 
-    .text         # code section
+.text       # code section
 
 main:
     li $v0, 10    # syscall 10 is exit
@@ -29,7 +29,7 @@ Save this file as `exit.s`.
 Run the following command:
 
 ```sh
-spim -file exit.s
+spim exit.s
 ```
 
 This will run the file, and since it only exits, nothing will happen (which is good).
@@ -37,20 +37,20 @@ This will run the file, and since it only exits, nothing will happen (which is g
 Here's an example MIPS program that prints something to the console:
 
 ```mips
-    .data
+.data
 
-helloworld: .asciiz "Hello, World!\n"     # declare a string
+helloworld: .asciiz "Hello, World!\n"       # declare a string
 
-    .text
-    .globl main                           # make the main function globally accessible
+.text
+.globl main                                 # make the main function globally accessible
 
 main:
-    li $v0, 4                             # syscall 4 is print_str
-    la $a0, helloworld                    # load the address of the string into $a0
-    syscall                               # call the kernel
+    li $v0, 4                               # syscall 4 is print_str
+    la $a0, helloworld                      # load the address of the string into $a0
+    syscall                                 # call the kernel
 
-    li $v0, 10                            # syscall 10 is exit
-    syscall                               # call the kernel
+    li $v0, 10                              # syscall 10 is exit
+    syscall                                 # call the kernel
 ```
 
 Running this program should print "Hello, World!" to the terminal.
