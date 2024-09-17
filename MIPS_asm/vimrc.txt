@@ -1,0 +1,22 @@
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+set expandtab
+set wrap
+noremap j gj
+noremap k gk
+filetype on
+syntax on
+set relativenumber
+set number
+set wildmenu
+set wildmode=list:longest
+set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx
+set scrolloff=20
+set sidescrolloff=5
+set incsearch
+set noerrorbells
+set mouse=a
+set background=dark
+set title
+set nocompatible
