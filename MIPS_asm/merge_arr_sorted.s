@@ -8,6 +8,7 @@ arr2Str: .asciiz "Array 2: "
 mergedArrStr: .asciiz "Merged array: "
 newline: .asciiz "\n"
 sep: .asciiz ", "
+bufferOverflow: .asciiz "Buffer overflow exception"
 
 .text
 
@@ -70,6 +71,7 @@ main:
 # TODO buffer overflow check at the start of mergeArrays proc each time
 
 mergeArrays:
+    bge $s2, 24, BufferOverflow
     beq $t0, $a2, L1                        # arr1 finished
     lw $t3, ($a0)                           # load next arr1 val
     beq $t1, $a3, L2                        # arr2 finished
@@ -146,3 +148,11 @@ printNewline:
     li $v0, 4
     syscall
     jr $ra
+
+BufferOverflow:
+    la $a0, bufferOverflow
+    li $v0, 4
+    syscall
+
+    li $v0, 10
+    syscall
