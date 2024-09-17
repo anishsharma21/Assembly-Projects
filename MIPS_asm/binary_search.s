@@ -41,7 +41,7 @@ arr1:
     lw $a2, ($a0)
     addi $a0, 4
     jal printArr
-    j prompt
+    j promptIndex
 
 arr2:
     la $a0, array2
@@ -61,16 +61,18 @@ promptIndex:
 printArr:
     move $t0, $a0
     lw $a0, ($a0)
+    li $v0, 1
     syscall
     addi $a1, 1
-    addi $a0, 4
     bne $a1, $a2, printSep
     la $a0, newline
+    li $v0, 4
     syscall
     jr $ra
 
 printSep:
     la $a0, sep
+    li $v0, 4
     syscall
     move $a0, $t0
     addi $a0, 4
