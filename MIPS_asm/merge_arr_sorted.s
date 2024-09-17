@@ -46,13 +46,17 @@ main:
     addi $a1, 4
     li $t0, 0
     li $t1, 0
-    la $t2, buffer
+    la $s0, buffer
+    move $s1, $s0                   # copy of first addr to update len
+    li $s2, 0                       # len of final arr
+    sw $s2, ($s0)                   # final arr length
+    addi $s0, 4
     jal mergeArrays
 
     la $a0, buffer
     li $a1, 0
-    li $a2, 9                       # HARDCODED LENGTH, fix in next iteration
-    # addi $a0, 4
+    lw $a2, ($a0)                   # HARDCODED LENGTH, fix in next iteration
+    addi $a0, 4
     jal printArr
     jal printNewline
 
@@ -63,7 +67,6 @@ main:
 # a0 base addr of arr1, a1 base addr of arr2, a2 len arr1, a3 len arr2, t0 cur idx arr1, t1 cur idx arr2, s0 base addr of buffer (addr of merged arr)
 # simple explanation: load val at cur idx of arr1, load val at cur idx of arr2, if val1 < val2, idx1 + 1, buffer idx equals val1, buffer idx +1, and back to mergeArrays, else, idx2 + 1, buffer idx equals val2, buffer idx +1, back to mergeArrays.
 # start by checking if arr1 is finished, if so, j to proc where arr2 is just appended on, in this proc, also check if arr2 is finished, if it is, then return. if arr1 not finished, load next val in arr1, then next line check if arr2 finished, if it is, then j to proc where arr1 is just appended on, then return at the end. otherwise, if arr2 not finished either, load next value in arr2. if arr1 val < arr2 val, j to proc that sets next buffer val to arr1 val, incremements arr1 idx, then j to mergeArrays, else, continue by setting arr2 as next buffer value, in each, buffer idx incremented before j to mergeArrays again (increment by word length), optional check if buffer overflow occurs
-# TODO first val in final arr must be length of the final array, needs to be set, referenced by a constant address, and incrememented each time a new value is added, not difficult but necessary for printing full array
 # TODO buffer overflow check at the start of mergeArrays proc each time
 
 mergeArrays:
@@ -90,29 +93,34 @@ L2:
     j finishMerge
 
 L3:
-    sw $t3, ($t2)                           # store val1 in buffer
+    sw $t3, ($s0)                           # store val1 in buffer
+    addi $s2, 1                             # increment len of final arr
     addi $t0, 1                             # increment arr1 idx
     addi $a0, 4                             # next arr1 addr
-    addi $t2, 4                             # next buffer addr
+    addi $s0, 4                             # next buffer addr
     j mergeArrays
 
 L4:
-    sw $t4, ($t2)                           # store val2 in buffer
+    sw $t4, ($s0)                           # store val2 in buffer
+    addi $s2, 1                             # increment len of final arr
     addi $t1, 1                             # increment arr2 idx
     addi $a1, 4                             # next arr2 addr
-    addi $t2, 4                             # next buffer addr
+    addi $s0, 4                             # next buffer addr
     j mergeArrays
 
 finishMerge:
     lw $t0, ($a0)
-    sw $t0, ($t2)
+    sw $t0, ($s0)
+    addi $s2, 1                             # increment len of final arr
     addi $a0, 4
-    addi $t2, 4
+    addi $s0, 4
     addi $a1, 1
     bne $a1, $a2, finishMerge
+    sw $s2, ($s1)                           # set len of final arr
     jr $ra
 
 endSort:
+    sw $s2, ($s1)                           # set len of final arr
     jr $ra
 
 printArr:
