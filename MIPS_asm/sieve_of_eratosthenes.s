@@ -1,6 +1,7 @@
 .data
 
 buffer: .space 1024
+bufferStr: .asciiz "Buffer: "
 prompt: .asciiz "Find prime numbers up to: "
 primesStr: .asciiz "Prime numbers: "
 newline: .asciiz "\n"
@@ -23,6 +24,7 @@ main:
     blt $v0, 0, NegativeValueError
     bge $v0, 255, MaxValueError                     # >= bc 1 val required for length
 
+    # fill buffer with values based on user input
     move $a0, $v0                                   # max val
     la $a1, buffer                                  # buffer addr
     li $a2, 0                                       # cur idx
@@ -30,6 +32,19 @@ main:
     addi $a1, 4
     jal fillBuffer
 
+    # print buffer after filling
+    la $a0, bufferStr
+    li $v0, 4
+    syscall
+
+    la $a0, buffer
+    lw $a1, ($a0)
+    addi $a0, 4
+    li $t1, 0
+    jal printPrimesLoop
+    jal printNewline
+
+    # find primes and print them
     la $a0, buffer                                  # addr of sieve buffer
     lw $a1, ($a0)                                   # max val
     addi $a0, 4                                     # set to addr of first val in buffer
@@ -77,12 +92,15 @@ handle1:
 
 printPrimes:
     li $t1, 0                                       # idx used when printing primes
+    move $t0, $a0
     la $a0, primesStr
     li $v0, 4
     syscall
+    move $a0, $t0
     j printPrimesLoop
 
 printPrimesLoop:
+    bgt $t1, $a1, jumpMain
     lw $t0, ($a0)
     addi $a0, 4
     addi $t1, 1
@@ -97,7 +115,7 @@ printPrimesLoop:
     la $a0, newline
     li $v0, 4
     syscall
-    j main
+    jr $ra
 
 printSep:
     la $a0, sep
@@ -113,6 +131,15 @@ fillBuffer:
     addi $a2, 1
     addi $a1, 4
     bne $a2, $a0, fillBuffer
+    jr $ra
+
+jumpMain:
+    jr $ra
+
+printNewline:
+    la $a0, newline
+    li $v0, 4
+    syscall
     jr $ra
 
 NegativeValueError:
