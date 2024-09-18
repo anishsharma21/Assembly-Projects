@@ -6,7 +6,7 @@
 * Brief work in `x86` and `ARMv8` assembly
 * Over 30 `MIPS` assembly programs - wrote the following in `MIPS` assembly:
     * Recursive factorial & fibonnaci (stack pointer manipulation)
-    * Bubble sort, insertion sort
+    * Bubble sort, insertion sort, binary search
     * `malloc` and `free` in assembly (in progress)
 
 ## Introduction
