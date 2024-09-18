@@ -23,7 +23,7 @@ main:
     blt $v0, 0, NegativeValueError
     bge $v0, 255, MaxValueError                     # >= bc 1 val required for length
 
-    move $a0, $v0                                   # max idx
+    move $a0, $v0                                   # max val
     la $a1, buffer                                  # buffer addr
     li $a2, 0                                       # cur idx
     sw $a0, ($a1)
@@ -31,49 +31,81 @@ main:
     jal fillBuffer
 
     la $a0, buffer                                  # addr of sieve buffer
-    lw $a1, ($a0)                                   # final idx (mutates)
+    lw $a1, ($a0)                                   # max val
     addi $a0, 4                                     # set to addr of first val in buffer
     li $a2, 2                                       # jump val (mutates)
+    jal sieve
 
     j end
 
-# issue I feel like I will encounter is the difference between final idx and the final value
 sieve:
-    bgt $a2, $a1, printPrimes                       # jump val >= final idx
+    bgt $a2, $a1, printPrimes                       # jump val > max val
     move $t0, $a0                                   # copy of first val addr
     sll $t1, $a2, 2                                 # jump val set to word length
-    # t2 meant to be cur idx, but actually 1 more I believe
-    move $t2, $a2                                   # cur idx that will be updated each iter
-    addi $t2, -1                                    # a2 is j val, 0 + addr gives val 1, 4 + addr is 2, etc
-    beq $t2, 2, handle1n2                           # first iteration is weird, handle 1 and 2 jump vals
+    move $t2, $a2                                   # cur val that will be updated each iter
+    beq $t2, 2, handle1                             # handle case where val is 1, first case
+    add $t0, $t0, $t1                               # first val is prime, should not be zeroed
     j sieveJumps                                    # null out all multiples of jump vals
 
 sieveJumps:
     sw $zero, ($t0)                                 # set word at cur addr to 0
     add $t0, $t0, $t1                               # next addr incr by sll jump val
-    add $t2, $t2, $a2                               # increment cur idx
-    blt $t2, $a1, sieveJumps                        # while cur idx <= final idx
+    add $t2, $t2, $a2                               # increment cur val
+    blt $t2, $a1, sieveJumps                        # while cur val < max val
     j nextJumpVal
 
 nextJumpVal:
+    # setup, addr and val of cur jump val
     move $t0, $a0                                   # copy of base addr (first val)
     add $t0, $t0, $t1                               # incr addr by sll jump val
-    move $t2, $a2                                   # copy of cur jump val
+    addi $t0, -4                                    # 0 based indexing
     j nextJumpValLoop
 
 nextJumpValLoop:
     addi $t0, 4                                     # addr of next potential jump val
-    addi $t2, 1                                     # incr cur jump val to next
-    bgt $t2, $a1, printPrimes                       # if cur jump val > final idx, sieve finished
+    addi $a2, 1                                     # incr cur jump val to next
+    bgt $a2, $a1, printPrimes                       # if cur jump val > final val, sieve finished
     lw $t1, ($t0)                                   # load next jump val
     beq $t1, $zero, nextJumpValLoop                 # if jump val has been set to 0, go to next
-    move $a2, $t1                                   # update jump val to next val
     j sieve
 
-handle1n2:
+handle1:
     sw $zero, ($t0)                                 # set the value 1 to 0 immediately
-    addi $a0, 4                                     # 1 value handled, move to 2 jump val and handle
+    addi $t0, 4                                     # base addr points to val 2
+    add $t0, $t0, $t1                               # first value is prime so should not be zeroed
     j sieveJumps
+
+printPrimes:
+    li $t1, 0                                       # idx used when printing primes
+    la $a0, primesStr
+    li $v0, 4
+    syscall
+    j printPrimesLoop
+
+printPrimesLoop:
+    lw $t0, ($a0)
+    addi $a0, 4
+    addi $t1, 1
+    beq $t0, $zero, printPrimesLoop
+
+    move $t2, $a0
+    move $a0, $t0
+    li $v0, 1
+    syscall
+    blt $t1, $a1, printSep
+
+    la $a0, newline
+    li $v0, 4
+    syscall
+    j main
+
+printSep:
+    la $a0, sep
+    li $v0, 4
+    syscall
+
+    move $a0, $t2
+    j printPrimesLoop
 
 fillBuffer:
     addi $t0, $a2, 1
