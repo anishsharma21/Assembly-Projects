@@ -32,18 +32,20 @@ main:
 
     la $a0, buffer                                  # addr of sieve buffer
     lw $a1, ($a0)                                   # final idx (mutates)
-    addi $a0, 4
+    addi $a0, 4                                     # set to addr of first val in buffer
     li $a2, 2                                       # jump val (mutates)
 
     j end
 
-# start with 2, add to base addr, set those values to 0, during loop iteration check if value already set to 0, if it is, increment by 2 and next iteration, end of loop iteration, find next val for jump val in buffer (next val not set to 0), then repeat that again with next jump val, repeat until jump val cannot be found (end of buffer reached), then final run through the buffer, printing values with separations that aren't equal to 0, those are the primes, newline, back to main
+# issue I feel like I will encounter is the difference between final idx and the final value
 sieve:
     bgt $a2, $a1, printPrimes                       # jump val >= final idx
-    move $t0, $a1                                   # copy final idx
-    beq $a2, 2, handle1n2                           # first iteration is weird, handle 1 and 2 jump vals
+    move $t0, $a0                                   # copy of first val addr
     sll $t1, $a2, 2                                 # jump val set to word length
-    move $t2, $a1                                   # cur idx that will be updated each iter
+    # t2 meant to be cur idx, but actually 1 more I believe
+    move $t2, $a2                                   # cur idx that will be updated each iter
+    addi $t2, -1                                    # a2 is j val, 0 + addr gives val 1, 4 + addr is 2, etc
+    beq $t2, 2, handle1n2                           # first iteration is weird, handle 1 and 2 jump vals
     j sieveJumps                                    # null out all multiples of jump vals
 
 sieveJumps:
@@ -85,6 +87,8 @@ NegativeValueError:
     la $a0, NegativeValueErrorStr
     li $v0, 4
     syscall
+# start with 2, add to base addr, set those values to 0, during loop iteration check if value already set to 0, if it is, increment by 2 and next iteration, end of loop iteration, find next val for jump val in buffer (next val not set to 0), then repeat that again with next jump val, repeat until jump val cannot be found (end of buffer reached), then final run through the buffer, printing values with separations that aren't equal to 0, those are the primes, newline, back to main
+# start with 2, add to base addr, set those values to 0, during loop iteration check if value already set to 0, if it is, increment by 2 and next iteration, end of loop iteration, find next val for jump val in buffer (next val not set to 0), then repeat that again with next jump val, repeat until jump val cannot be found (end of buffer reached), then final run through the buffer, printing values with separations that aren't equal to 0, those are the primes, newline, back to main
 
 MaxValueError:
     la $a0, MaxValueErrorStr
