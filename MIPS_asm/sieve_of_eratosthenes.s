@@ -55,7 +55,7 @@ main:
 
 # start with 2, add to base addr, set those values to 0, during loop iteration check if value already set to 0, if it is, increment by 2 and next iteration, end of loop iteration, find next val for jump val in buffer (next val not set to 0), then repeat that again with next jump val, repeat until jump val cannot be found (end of buffer reached), then final run through the buffer, printing values with separations that aren't equal to 0, those are the primes, newline, back to main
 sieve:
-    bgt $a2, $a1, printPrimes                       # jump val > max val
+    bgt $a2, $a1, printPrimes                       # jump val > max val, for edge case
     move $t0, $a0                                   # copy of first val addr
     sll $t1, $a2, 2                                 # jump val set to word length
     move $t2, $a2                                   # cur val that will be updated each iter
@@ -67,12 +67,13 @@ sieveJumps:
     sw $zero, ($t0)                                 # set word at cur addr to 0
     add $t0, $t0, $t1                               # next addr incr by sll jump val
     add $t2, $t2, $a2                               # increment cur val
-    blt $t2, $a1, sieveJumps                        # while cur val < max val
+    ble $t2, $a1, sieveJumps                        # while cur val <= max val
     j nextJumpVal
 
 nextJumpVal:
     # setup, addr and val of cur jump val
     move $t0, $a0                                   # copy of base addr (first val)
+    # find addr of cur jump val
     add $t0, $t0, $t1                               # incr addr by sll jump val
     addi $t0, -4                                    # 0 based indexing
     j nextJumpValLoop
@@ -80,10 +81,14 @@ nextJumpVal:
 nextJumpValLoop:
     addi $t0, 4                                     # addr of next potential jump val
     addi $a2, 1                                     # incr cur jump val to next
-    bgt $a2, $a1, printPrimes                       # if cur jump val > final val, sieve finished
+    bge $a2, $a1, printPrimes                       # if cur jump val > final val, sieve finished
     lw $t1, ($t0)                                   # load next jump val
     beq $t1, $zero, nextJumpValLoop                 # if jump val has been set to 0, go to next
-    j sieve
+    sll $t1, $t1, 2                                 # jump val -> word length
+    move $t2, $a2                                   # copy of cur jump val
+    add $t0, $t0, $t1                               # skip first val (which is prime)
+    add $t2, $t2, $a2                               # skipped prime, so t2 first non-prime val
+    j sieveJumps
 
 handle1:
     sw $zero, ($t0)                                 # set the value 1 to 0 immediately
@@ -98,16 +103,18 @@ printPrimes:
     li $v0, 4
     syscall
     move $a0, $t0
+    # li $t2, 0                                       # flag that is checked first time
     j printPrimesLoop
 
 printPrimesLoop:
+    # bne $t2, $zero, printSep
     bgt $t1, $a1, jumpMain
     lw $t0, ($a0)
     addi $a0, 4
     addi $t1, 1
+    move $t2, $a0
     beq $t0, $zero, printPrimesLoop
 
-    move $t2, $a0
     move $a0, $t0
     li $v0, 1
     syscall
@@ -119,10 +126,17 @@ printPrimesLoop:
     jr $ra
 
 printSep:
+    # beq $t0, $zero, sepNotPrinted
     la $a0, sep
     li $v0, 4
     syscall
 
+    # li $t2, 0
+    move $a0, $t2
+    j printPrimesLoop
+
+sepNotPrinted:
+    li $t2, 0
     move $a0, $t2
     j printPrimesLoop
 
