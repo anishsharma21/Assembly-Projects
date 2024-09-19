@@ -32,18 +32,6 @@ main:
     addi $a1, 4
     jal fillBuffer
 
-    # print buffer after filling
-    la $a0, bufferStr
-    li $v0, 4
-    syscall
-
-    la $a0, buffer
-    lw $a1, ($a0)
-    addi $a0, 4
-    li $t1, 0
-    jal printPrimesLoop
-    jal printNewline
-
     # find primes and print them
     la $a0, buffer                                  # addr of sieve buffer
     lw $a1, ($a0)                                   # max val
@@ -97,24 +85,23 @@ handle1:
     j sieveJumps
 
 printPrimes:
-    li $t1, 0                                       # idx used when printing primes
     move $t0, $a0
     la $a0, primesStr
     li $v0, 4
     syscall
     move $a0, $t0
-    # li $t2, 0                                       # flag that is checked first time
+    li $t1, 0                                       # cur idx / cur val, updated
     j printPrimesLoop
 
+# load in cur val, increment cur idx and addr, if val is not 0, move that val into a0 to print it with v0=1 syscall, then...
 printPrimesLoop:
-    # bne $t2, $zero, printSep
     bgt $t1, $a1, jumpMain
     lw $t0, ($a0)
     addi $a0, 4
     addi $t1, 1
-    move $t2, $a0
     beq $t0, $zero, printPrimesLoop
 
+    move $t2, $a0
     move $a0, $t0
     li $v0, 1
     syscall
@@ -126,17 +113,10 @@ printPrimesLoop:
     jr $ra
 
 printSep:
-    # beq $t0, $zero, sepNotPrinted
     la $a0, sep
     li $v0, 4
     syscall
 
-    # li $t2, 0
-    move $a0, $t2
-    j printPrimesLoop
-
-sepNotPrinted:
-    li $t2, 0
     move $a0, $t2
     j printPrimesLoop
 
