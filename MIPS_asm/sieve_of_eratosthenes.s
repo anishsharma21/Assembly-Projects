@@ -91,9 +91,9 @@ printPrimes:
     syscall
     move $a0, $t0
     li $t1, 0                                       # cur idx / cur val, updated
+    li $t3, 0                                       # flag for printing sep first
     j printPrimesLoop
 
-# load in cur val, increment cur idx and addr, if val is not 0, move that val into a0 to print it with v0=1 syscall, then...
 printPrimesLoop:
     bgt $t1, $a1, jumpMain
     lw $t0, ($a0)
@@ -101,10 +101,14 @@ printPrimesLoop:
     addi $t1, 1
     beq $t0, $zero, printPrimesLoop
 
-    move $t2, $a0
+    move $t2, $a0                                   # save a0 which will be overwritten
+
+    beq $t3, 1, printSepFirst                       # if int already printed, print sep first
+
     move $a0, $t0
     li $v0, 1
     syscall
+
     blt $t1, $a1, printSep
 
     la $a0, newline
@@ -113,11 +117,31 @@ printPrimesLoop:
     jr $ra
 
 printSep:
+    lw $t0, ($a0)
+    li $t3, 1                                       # set flag true, looking to print sep
+    move $a0, $t2
+    beq $t0, $zero, printPrimesLoop
+
+    move $t2, $a0
     la $a0, sep
     li $v0, 4
     syscall
 
     move $a0, $t2
+    j printPrimesLoop
+
+# special case where sep needs to be printed before number
+printSepFirst:
+    la $a0, sep
+    li $v0, 4
+    syscall
+
+    move $a0, $t0
+    li $v0, 1
+    syscall
+
+    move $a0, $t2
+
     j printPrimesLoop
 
 fillBuffer:
