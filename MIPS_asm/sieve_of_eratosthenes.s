@@ -91,6 +91,7 @@ printPrimes:
     li $v0, 4
     syscall
     move $a0, $t0
+    li $t3, 0                                       # flag for printing sep
     j printPrimesLoop
 
 printPrimesLoop:
@@ -101,24 +102,26 @@ printPrimesLoop:
     move $t2, $a0
     beq $t0, $zero, printPrimesLoop
 
+    beq $t3, 1, printSep                            # check if sep should be printed
+
+    li $t3, 1                                       # set sep flag from now on
     move $a0, $t0
     li $v0, 1
     syscall
-    blt $t1, $a1, printSep
-
-    la $a0, newline
-    li $v0, 4
-    syscall
-    jr $ra
+    move $a0, $t2
+    j printPrimesLoop
 
 printSep:
     la $a0, sep
     li $v0, 4
     syscall
 
-    # li $t2, 0
+    move $a0, $t0
+    li $v0, 1
+    syscall
+
     move $a0, $t2
-    j printPrimesLoop
+    blt $t1, $a1, printPrimesLoop
 
 fillBuffer:
     addi $t0, $a2, 1
@@ -129,6 +132,9 @@ fillBuffer:
     jr $ra
 
 jumpMain:
+    la $a0, newline
+    li $v0, 4
+    syscall
     jr $ra
 
 printNewline:
