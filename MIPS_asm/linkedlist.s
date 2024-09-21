@@ -3,8 +3,8 @@
 .data
 
 userchoice: .space 4
-headNodeAddr: .space 4
-curNodeAddr: .space 4
+headNodeAddr: .word 0
+curNodeAddr: .word 0
 
 intro: .asciiz "\nLinked List initialised.\n"
 choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), or quit (q)\n"
@@ -51,6 +51,8 @@ mainLoop:
 
 goToHead:
     la $a0, headNodeAddr
+    lw $a0, ($a0)
+
     la $a1, curNodeAddr
     sw $a0, ($a1)
 
@@ -73,7 +75,8 @@ showVal:
     syscall
 
     la $a0, curNodeAddr
-    lb $a0, ($a0)
+    lw $a0, ($a0)                               # load addr of cur node
+    lw $a0, ($a0)                               # load val at cur node addr
     li $v0, 1
     syscall
 
@@ -109,15 +112,14 @@ initHeadNode:
     li $v0, 9                                   # sbrk, returns addr in v0
     syscall
 
-    li $t0, 0
-    sb $t0, ($v0)
+    li $t0, 5
+    sw $t0, ($v0)
 
     la $a0, headNodeAddr                        # store head node addr in headNodeAddr
     sw $v0, ($a0)
 
-    la $a0, headNodeAddr
-    la $a1, curNodeAddr
-    sw $a0, ($a1)
+    la $a0, curNodeAddr
+    sw $v0, ($a0)
 
     jr $ra
 
