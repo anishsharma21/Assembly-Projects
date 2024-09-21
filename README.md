@@ -7,6 +7,8 @@
 * Over 30 `MIPS` assembly programs - wrote the following in `MIPS` assembly:
     * Recursive factorial & fibonnaci (stack pointer manipulation)
     * Bubble sort, insertion sort, binary search
+    * Sieve of Eratosthenes
+    * Linked List
     * `malloc` and `free` in assembly (in progress)
 
 ## Introduction
