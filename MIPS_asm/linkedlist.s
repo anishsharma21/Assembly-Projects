@@ -7,18 +7,21 @@ headNodeAddr: .word 0
 curNodeAddr: .word 0
 
 intro: .asciiz "\nLinked List initialised.\n"
-choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), or quit (q)\n"
+choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), set val (s), or quit (q)\n"
 choice2: .asciiz "Choice: "
 
 headstr: .asciiz "\nYou are at the head node\n"
 nextstr: .asciiz "\nYou are at the next node\n"
 pushedstr: .asciiz "\nPushed node\n"
 valstr: .asciiz "\nThe value of this node is: "
+setvalstr: .asciiz "\nSet the value to: "
+setvalstr2: .asciiz "\nValue set!\n"
 newline: .asciiz "\n"
 
-choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, or p.\n"
+choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, s, or p.\n"
 nexterrstr: .asciiz "\nThere is no next value.\n"
 valerrstr: .asciiz "\nThis node has no value\n"
+setvalerr: .asciiz "\nInvalid value. Must be integer.\n"
 
 .text
 
@@ -41,6 +44,7 @@ mainLoop:
     beq $a0, 104, goToHead
     beq $a0, 110, goToNext
     beq $a0, 118, showVal
+    beq $a0, 115, setVal
     beq $a0, 112, pushNode
     beq $a0, 113, quit
 
@@ -97,6 +101,24 @@ showVal:
     syscall
 
     la $a0, newline
+    li $v0, 4
+    syscall
+
+    j mainLoop
+
+setVal:
+    la $a0, setvalstr
+    li $v0, 4
+    syscall
+
+    li $v0, 5
+    syscall                                     # not sure how to catch err here if not int
+
+    la $a0, curNodeAddr
+    lw $a0, ($a0)
+    sw $v0, ($a0)                               # store user input at val for cur node
+
+    la $a0, setvalstr2
     li $v0, 4
     syscall
 
