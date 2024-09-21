@@ -83,13 +83,6 @@ goToNext:
 
     j mainLoop
 
-NextError:
-    la $a0, nexterrstr
-    li $v0, 4
-    syscall
-
-    j mainLoop
-
 showVal:
     la $a0, valstr
     li $v0, 4
@@ -125,15 +118,11 @@ setVal:
 
     j mainLoop
 
-# still need to fix hard coded value
 pushNode:
     # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
     li $a0, 8
     li $v0, 9
     syscall
-
-    li $t0, 2                                   # hard coded val for now
-    sw $t0, ($v0)
 
     la $a0, tailNodeAddr                        # load addr to mem which holds tail node addr
     lw $a0, ($a0)                               # load tail node addr from the mem addr that holds it
@@ -141,6 +130,21 @@ pushNode:
 
     la $a0, tailNodeAddr
     sw $v0, ($a0)                               # set tail node addr to next tail node addr
+
+    la $a0, setvalstr
+    li $v0, 4
+    syscall
+
+    li $v0, 5
+    syscall
+
+    la $a0, tailNodeAddr
+    lw $a0, ($a0)
+    sw $v0, ($a0)
+
+    la $a0, setvalstr2
+    li $v0, 4
+    syscall
 
     la $a0, pushedstr
     li $v0, 4
@@ -180,6 +184,13 @@ initLinkedList:
     sw $v0, ($a0)
 
     jr $ra
+
+NextError:
+    la $a0, nexterrstr
+    li $v0, 4
+    syscall
+
+    j mainLoop
 
 quit:
     li $v0, 10
