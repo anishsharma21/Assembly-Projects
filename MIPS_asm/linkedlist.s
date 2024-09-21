@@ -63,7 +63,20 @@ goToHead:
     j mainLoop
 
 goToNext:
+    la $a0, curNodeAddr
+    lw $a0, ($a0)                               # load addr of cur node
+    lw $a0, 4($a0)                              # load next mem addr
+
+    beq $a0, 0, NextError                       # if next addr is 0, err
+
     la $a0, nextstr
+    li $v0, 4
+    syscall
+
+    j mainLoop
+
+NextError:
+    la $a0, nexterrstr
     li $v0, 4
     syscall
 
