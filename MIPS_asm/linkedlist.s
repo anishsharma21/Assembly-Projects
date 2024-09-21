@@ -2,43 +2,80 @@
 
 .data
 
-userchoice: .space 1
+userchoice: .space 4
+headNodeAddr: .space 4
+curNodeAddr: .space 4
 
 intro: .asciiz "Linked List initialised."
 choice1: .asciiz "\nChoose head (h), next (n), val (v), or push (p)\n"
 choice2: .asciiz "Choice: "
-headstr: .asciiz "You are at the head node"
-nextstr: .asciiz "You are at the next node"
-pushedstr: .asciiz "Pushed node"
+
+headstr: .asciiz "You are at the head node\n"
+nextstr: .asciiz "You are at the next node\n"
+pushedstr: .asciiz "Pushed node\n"
 valstr: .asciiz "The value of this node is: "
+newline: .asciiz "\n"
 
 choiceerr: .asciiz "Invalid choice. Choose from h, n, v, or p."
 nexterrstr: .asciiz "There is no next value."
 valerrstr: .asciiz "This node has no value"
-newline: .asciiz "\n"
 
 .text
 
 main:
+    jal initHeadNode                            # initialise head node of ll
+
     la $a0, intro
     li $v0, 4
     syscall
 
+    j mainLoop
+
+mainLoop:
     jal displayOptions
-    syscall                                     # read str, setup in displayOptions
 
     la $a0, userchoice
     lb $a0, ($a0)
+
     # switch statement
-    beq $a0, 72, goToHead
-    beq $a0, 78, goToNext
-    beq $a0, 86, showVal
-    beq $a0, 80, pushNode
+    beq $a0, 104, goToHead
+    beq $a0, 110, goToNext
+    beq $a0, 118, showVal
+    beq $a0, 112, pushNode
 
     la $a0, choiceerr
     li $v0, 4
     syscall
-    j main
+    j mainLoop
+
+goToHead:
+    la $a0, headNodeAddr
+    la $a1, curNodeAddr
+    sw $a0, ($a1)
+
+    la $a0, headstr
+    li $v0, 4
+    syscall
+
+    j mainLoop
+
+goToNext:
+    la $a0, nextstr
+    li $v0, 4
+    syscall
+    jr $ra
+
+showVal:
+    la $a0, valstr
+    li $v0, 4
+    syscall
+    jr $ra
+
+pushNode:
+    la $a0, pushedstr
+    li $v0, 4
+    syscall
+    jr $ra
 
 displayOptions:
     la $a0, choice1
@@ -46,7 +83,23 @@ displayOptions:
     syscall
     la $a0, choice2
     syscall
-    li $v0, 8                                   # read str
+
     la $a0, userchoice                          # buffer for choice char
-    li $a1, 1                                   # len of choice str (1 char/byte)
+    li $a1, 4                                   # len of choice str (1 char/byte)
+    li $v0, 8                                   # read str
+    syscall
+
     jr $ra
+
+initHeadNode:
+    # initialise head node
+    li $a0, 8                                   # 4 bytes for val, 4 bytes for next addr
+    li $v0, 9                                   # sbrk, returns addr in v0
+    syscall
+    la $a0, headNodeAddr                        # store head node addr in headNodeAddr
+    sw $v0, ($a0)
+    la $a0, curNodeAddr
+    sw $v0, ($a0)                               # store head node addr in curNodeAddr
+    jr $ra
+
+
