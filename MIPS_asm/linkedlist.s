@@ -69,6 +69,9 @@ goToNext:
 
     beq $a0, 0, NextError                       # if next addr is 0, err
 
+    la $a1, curNodeAddr
+    sw $a0, ($a1)                               # store next mem addr into cur
+
     la $a0, nextstr
     li $v0, 4
     syscall
