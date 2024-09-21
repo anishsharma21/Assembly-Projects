@@ -4,6 +4,7 @@
 
 userchoice: .space 4
 headNodeAddr: .word 0
+tailNodeAddr: .word 0
 curNodeAddr: .word 0
 
 intro: .asciiz "\nLinked List initialised.\n"
@@ -26,7 +27,7 @@ setvalerr: .asciiz "\nInvalid value. Must be integer.\n"
 .text
 
 main:
-    jal initHeadNode                            # initialise head node of ll
+    jal initLinkedList                              # initialise head node of ll
 
     la $a0, intro
     li $v0, 4
@@ -114,9 +115,9 @@ setVal:
     li $v0, 5
     syscall                                     # not sure how to catch err here if not int
 
-    la $a0, curNodeAddr
-    lw $a0, ($a0)
-    sw $v0, ($a0)                               # store user input at val for cur node
+    la $a0, curNodeAddr                         # load addr to mem which holds cur node addr
+    lw $a0, ($a0)                               # load cur node addr from the mem addr that holds it
+    sw $v0, ($a0)                               # set user input int for cur node
 
     la $a0, setvalstr2
     li $v0, 4
@@ -124,7 +125,7 @@ setVal:
 
     j mainLoop
 
-# incomplete, doesn't set user input value, appends at cur node, not end - needs correction
+# still need to fix hard coded value
 pushNode:
     # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
     li $a0, 8
@@ -134,9 +135,12 @@ pushNode:
     li $t0, 2                                   # hard coded val for now
     sw $t0, ($v0)
 
-    la $a0, curNodeAddr
-    lw $a0, curNodeAddr
-    sw $v0, 4($a0)                              # set next mem addr to pushed node
+    la $a0, tailNodeAddr                        # load addr to mem which holds tail node addr
+    lw $a0, ($a0)                               # load tail node addr from the mem addr that holds it
+    sw $v0, 4($a0)                              # set next addr of cur tail node to next tail node addr
+
+    la $a0, tailNodeAddr
+    sw $v0, ($a0)                               # set tail node addr to next tail node addr
 
     la $a0, pushedstr
     li $v0, 4
@@ -157,16 +161,19 @@ displayOptions:
 
     jr $ra
 
-initHeadNode:
-    # initialise head node
+initLinkedList:
+    # initialise first node
     li $a0, 8                                   # 4 bytes for val, 4 bytes for next addr
     li $v0, 9                                   # sbrk, returns addr in v0
     syscall
 
-    li $t0, 5
-    sw $t0, ($v0)
+    # li $t0, 5
+    # sw $t0, ($v0)
 
     la $a0, headNodeAddr                        # store head node addr in headNodeAddr
+    sw $v0, ($a0)
+
+    la $a0, tailNodeAddr                        # store tail node addr in tailNodeAddr
     sw $v0, ($a0)
 
     la $a0, curNodeAddr
