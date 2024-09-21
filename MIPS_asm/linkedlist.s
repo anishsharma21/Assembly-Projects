@@ -3,7 +3,6 @@
 .data
 
 userchoice: .space 4
-headNode: .space 8
 headNodeAddr: .space 4
 curNodeAddr: .space 4
 
@@ -74,7 +73,12 @@ showVal:
     syscall
 
     la $a0, curNodeAddr
+    lb $a0, ($a0)
     li $v0, 1
+    syscall
+
+    la $a0, newline
+    li $v0, 4
     syscall
 
     j mainLoop
@@ -105,10 +109,16 @@ initHeadNode:
     li $v0, 9                                   # sbrk, returns addr in v0
     syscall
 
+    li $t0, 0
+    sb $t0, ($v0)
+
     la $a0, headNodeAddr                        # store head node addr in headNodeAddr
     sw $v0, ($a0)
-    la $a0, curNodeAddr
-    sw $v0, ($a0)                               # store head node addr in curNodeAddr
+
+    la $a0, headNodeAddr
+    la $a1, curNodeAddr
+    sw $a0, ($a1)
+
     jr $ra
 
 quit:
