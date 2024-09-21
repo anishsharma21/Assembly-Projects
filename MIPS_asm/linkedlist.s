@@ -102,7 +102,20 @@ showVal:
 
     j mainLoop
 
+# incomplete, doesn't set user input value, appends at cur node, not end - needs correction
 pushNode:
+    # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
+    li $a0, 8
+    li $v0, 9
+    syscall
+
+    li $t0, 2                                   # hard coded val for now
+    sw $t0, ($v0)
+
+    la $a0, curNodeAddr
+    lw $a0, curNodeAddr
+    sw $v0, 4($a0)                              # set next mem addr to pushed node
+
     la $a0, pushedstr
     li $v0, 4
     syscall
