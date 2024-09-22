@@ -22,6 +22,7 @@ newline: .asciiz "\n"
 
 choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, p, r, s, l, or q.\n"
 nexterrstr: .asciiz "\nThere is no next value.\n"
+poperrstr: .asciiz "\nCannot pop head from stack\n"
 valerrstr: .asciiz "\nThis node has no value\n"
 setvalerr: .asciiz "\nInvalid value. Must be integer.\n"
 
@@ -121,7 +122,6 @@ setVal:
 
     j mainLoop
 
-# TODO check length first (i.e. just check if there is a next addr for the cur head node)
 # TODO check in mem addr arr for nodes that can be used instead, print something to indicate that a previous node is being used for the new node (to see if memory allocation is working as anticipated)
 pushNode:
     # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
@@ -156,6 +156,7 @@ pushNode:
     syscall
     j mainLoop
 
+# TODO check length first (i.e. just check if there is a next addr for the cur head node)
 popNode:
     # set head node to next node of current head (this would be enough in a GC environment)
     # need to also store addr of prev head (now popped) so it can be used for future pushed nodes
@@ -163,6 +164,7 @@ popNode:
     la $a0, headNodeAddr                        # get pointer to head node addr
     lw $t0, ($a0)                               # get head node addr from pointer
     lw $t1, 4($t0)                              # get next addr on cur head node
+    beq $t1, 0, PopError                        # if no next addr, can't pop
     sw $t1, ($a0)                               # set head node addr to next node addr
 
     la $a0, poppedstr
@@ -246,6 +248,13 @@ initLinkedStack:
 
 NextError:
     la $a0, nexterrstr
+    li $v0, 4
+    syscall
+
+    j mainLoop
+
+PopError:
+    la $a0, poperrstr
     li $v0, 4
     syscall
 
