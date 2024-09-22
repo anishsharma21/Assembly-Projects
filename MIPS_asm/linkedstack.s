@@ -125,12 +125,12 @@ pushNode:
     li $v0, 9
     syscall
 
-    la $a0, tailNodeAddr                        # load addr to mem which holds tail node addr
-    lw $a0, ($a0)                               # load tail node addr from the mem addr that holds it
-    sw $v0, 4($a0)                              # set next addr of cur tail node to next tail node addr
+    la $a0, headNodeAddr                        # get pointer to head node addr
+    lw $a0, ($a0)                               # get head node addr from pointer
+    sw $a0, 4($v0)                              # set next addr of cur node to cur head node addr
 
-    la $a0, tailNodeAddr
-    sw $v0, ($a0)                               # set tail node addr to next tail node addr
+    la $a0, headNodeAddr                        # get pointer to head node addr
+    sw $v0, ($a0)                               # set set new node addr as head node addr
 
     la $a0, setvalstr
     li $v0, 4
@@ -139,7 +139,7 @@ pushNode:
     li $v0, 5
     syscall
 
-    la $a0, tailNodeAddr
+    la $a0, headNodeAddr
     lw $a0, ($a0)
     sw $v0, ($a0)
 
@@ -202,9 +202,6 @@ initLinkedStack:
     syscall
 
     la $a0, headNodeAddr                        # store head node addr in headNodeAddr
-    sw $v0, ($a0)
-
-    la $a0, tailNodeAddr                        # store tail node addr in tailNodeAddr
     sw $v0, ($a0)
 
     la $a0, curNodeAddr
