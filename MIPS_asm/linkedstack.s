@@ -4,21 +4,23 @@
 userchoice: .space 4
 headNodeAddr: .word 0
 curNodeAddr: .word 0
+addrArr: .word 100
 
 intro: .asciiz "\nLinked Stack initialised.\n"
-choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), set val (s), length (l), or quit (q)\n"
+choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), pop/remove (r), set val (s), length (l), or quit (q)\n"
 choice2: .asciiz "Choice: "
 
 headstr: .asciiz "\nYou are at the head node\n"
 nextstr: .asciiz "\nYou are at the next node\n"
 pushedstr: .asciiz "\nPushed node\n"
+poppedstr: .asciiz "\nPopped node\n"
 valstr: .asciiz "\nThe value of this node is: "
 setvalstr: .asciiz "\nSet the value to: "
 setvalstr2: .asciiz "\nValue set!\n"
 lengthstr: .asciiz "\nLength of linked list: "
 newline: .asciiz "\n"
 
-choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, s, l, or p.\n"
+choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, p, r, s, l, or q.\n"
 nexterrstr: .asciiz "\nThere is no next value.\n"
 valerrstr: .asciiz "\nThis node has no value\n"
 setvalerr: .asciiz "\nInvalid value. Must be integer.\n"
@@ -47,6 +49,7 @@ mainLoop:
     beq $a0, 115, setVal
     beq $a0, 108, findLength
     beq $a0, 112, pushNode
+    beq $a0, 114, popNode
     beq $a0, 113, quit
 
     la $a0, choiceerr
@@ -118,7 +121,8 @@ setVal:
 
     j mainLoop
 
-# TODO refactor push node to create new node, point to head node, and set head node to new node (stack)
+# TODO check length first (i.e. just check if there is a next addr for the cur head node)
+# TODO check in mem addr arr for nodes that can be used instead, print something to indicate that a previous node is being used for the new node (to see if memory allocation is working as anticipated)
 pushNode:
     # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
     li $a0, 8
@@ -151,6 +155,37 @@ pushNode:
     li $v0, 4
     syscall
     j mainLoop
+
+popNode:
+    # set head node to next node of current head (this would be enough in a GC environment)
+    # need to also store addr of prev head (now popped) so it can be used for future pushed nodes
+
+    la $a0, headNodeAddr                        # get pointer to head node addr
+    lw $t0, ($a0)                               # get head node addr from pointer
+    lw $t1, 4($t0)                              # get next addr on cur head node
+    sw $t1, ($a0)                               # set head node addr to next node addr
+
+    la $a0, poppedstr
+    li $v0, 4
+    syscall
+
+    # store popped node addr for future use in a static arr for mem management
+    la $a0, addrArr
+    move $a1, $t0
+    j saveAddr
+
+saveAddr:
+    # iteratively check for next free space in addr management array
+    lw $t0, ($a0)
+    addi $a0, 4
+    bne $t0, 0, saveAddr
+
+    # store popped node addr for future use in addr management arr
+    sw $a1, ($a0)
+    j goToHead
+
+printArr:
+    # TODO should be generalised, but immediate use case is for printing contents of addr arr
 
 findLength:
     la $a0, headNodeAddr
