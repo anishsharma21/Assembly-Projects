@@ -5,6 +5,7 @@ userchoice: .space 4
 headNodeAddr: .word 0
 curNodeAddr: .word 0
 addrArr: .word 100
+addrArrCount: .space 1
 
 intro: .asciiz "\nLinked Stack initialised.\n"
 choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), pop/remove (r), set val (s), length (l), or quit (q)\n"
@@ -123,11 +124,13 @@ setVal:
     j mainLoop
 
 # TODO check in mem addr arr for nodes that can be used instead, print something to indicate that a previous node is being used for the new node (to see if memory allocation is working as anticipated)
+# strategy I am thinking of going with is using another static data item, which indicates how many nodes are available for reuse, we check this first, if its 0, then we just dynamically allocate, otherwise, we get that address stored int the mem addr array and put it in v0 
 pushNode:
-    # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
-    li $a0, 8
-    li $v0, 9
-    syscall
+    # first check if node exists for reuse
+    la $a0, addrArrCount
+    lb $t0, ($a0)
+    # this jal proc checks for mem reuse or just dynamic alloc as usual
+    jal allocateMemForNode
 
     la $a0, headNodeAddr                        # get pointer to head node addr
     lw $a0, ($a0)                               # get head node addr from pointer
@@ -156,7 +159,6 @@ pushNode:
     syscall
     j mainLoop
 
-# TODO check length first (i.e. just check if there is a next addr for the cur head node)
 popNode:
     # set head node to next node of current head (this would be enough in a GC environment)
     # need to also store addr of prev head (now popped) so it can be used for future pushed nodes
@@ -176,6 +178,17 @@ popNode:
     move $a1, $t0
     j saveAddr
 
+allocateMemForNode:
+    # TODO check t0, if its 0, dynamic alloc, otherwise, minus 1, sll 2, and get addr to node for reuse
+    bne $t0, 0, reuseMemForNode
+    # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
+    li $a0, 8
+    li $v0, 9
+    syscall
+
+reuseMemForNode:
+    # TODO requires implementation
+
 saveAddr:
     # iteratively check for next free space in addr management array
     lw $t0, ($a0)
@@ -184,6 +197,10 @@ saveAddr:
 
     # store popped node addr for future use in addr management arr
     sw $a1, ($a0)
+    la $a0, addrArrCount                        # incr addrArrCount
+    lb $t0, ($a0)
+    addi $t0, 1
+    sb $t0, ($a0)
     j goToHead
 
 printArr:
