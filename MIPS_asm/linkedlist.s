@@ -1,5 +1,4 @@
-# pretty simple, store val, then addr right after of the next val, using sbrk for dynamic mem alloc, head, next, and val strings to navigate through linkedlist
-
+# this is a basic linked list - implementing pop would require differentiating between a queue or a stack
 .data
 
 userchoice: .space 4
@@ -8,7 +7,7 @@ tailNodeAddr: .word 0
 curNodeAddr: .word 0
 
 intro: .asciiz "\nLinked List initialised.\n"
-choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), set val (s), or quit (q)\n"
+choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), set val (s), length (l), or quit (q)\n"
 choice2: .asciiz "Choice: "
 
 headstr: .asciiz "\nYou are at the head node\n"
@@ -17,9 +16,10 @@ pushedstr: .asciiz "\nPushed node\n"
 valstr: .asciiz "\nThe value of this node is: "
 setvalstr: .asciiz "\nSet the value to: "
 setvalstr2: .asciiz "\nValue set!\n"
+lengthstr: .asciiz "\nLength of linked list: "
 newline: .asciiz "\n"
 
-choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, s, or p.\n"
+choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, s, l, or p.\n"
 nexterrstr: .asciiz "\nThere is no next value.\n"
 valerrstr: .asciiz "\nThis node has no value\n"
 setvalerr: .asciiz "\nInvalid value. Must be integer.\n"
@@ -46,6 +46,7 @@ mainLoop:
     beq $a0, 110, goToNext
     beq $a0, 118, showVal
     beq $a0, 115, setVal
+    beq $a0, 108, findLength
     beq $a0, 112, pushNode
     beq $a0, 113, quit
 
@@ -151,6 +152,35 @@ pushNode:
     syscall
     j mainLoop
 
+findLength:
+    la $a0, headNodeAddr
+    lw $t0, ($a0)                               # load addr to get node addr
+    li $a1, 1                                   # all linked lists have len 1 minimum
+
+findLengthLoop:
+    lw $t0, 4($t0)                              # load next node addr using node addr
+
+    beq $t0, 0, endFindLength                   # addr is 0, which means not next node
+
+    addi $a1, 1                                 # incremement len
+    move $a0, $t0                               # move next node addr into a0
+    j findLengthLoop
+
+endFindLength:
+    la $a0, lengthstr
+    li $v0, 4
+    syscall
+
+    move $a0, $a1
+    li $v0, 1
+    syscall
+
+    la $a0, newline
+    li $v0, 4
+    syscall
+
+    j mainLoop
+
 displayOptions:
     la $a0, choice1
     li $v0, 4
@@ -170,9 +200,6 @@ initLinkedList:
     li $a0, 8                                   # 4 bytes for val, 4 bytes for next addr
     li $v0, 9                                   # sbrk, returns addr in v0
     syscall
-
-    # li $t0, 5
-    # sw $t0, ($v0)
 
     la $a0, headNodeAddr                        # store head node addr in headNodeAddr
     sw $v0, ($a0)
