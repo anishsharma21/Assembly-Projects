@@ -4,11 +4,12 @@
 
 * Text editor of choice: ![Vim](https://img.shields.io/badge/-Vim-333333?style=flat&logo=vim)&nbsp;
 * Brief work in `x86` and `ARMv8` assembly
-* Over 30 `MIPS` assembly programs - wrote the following in `MIPS` assembly:
+* Over 40 `MIPS` assembly programs including:
     * [Recursive factorial](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/recursive_factorial.s) & [Fibonnaci](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/recursive_fibonacci.s) (stack pointer manipulation)
     * [Sieve of Eratosthenes](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/sieve_of_eratosthenes.s)
     * [Binary search](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/binary_search.s), [Bubble sort](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/bubble_sort.s), [Insertion sort](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/insertion_sort.s)
     * [Linked List](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedlist.s), [Linked Stack](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedstack.s)
+        * Memory management of nodes - reusing memory with addresses stored in static data array-list
     * `malloc` and `free` in assembly (in progress)
 
 ## Introduction
