@@ -209,7 +209,6 @@ allocateMemForNode:
     syscall
     jr $ra
 
-# TODO fix error where addresses in addr arr are being used at the same time
 reuseMemForNode:
     # -1 from addr arr count
     la $t1, addrArrCount
