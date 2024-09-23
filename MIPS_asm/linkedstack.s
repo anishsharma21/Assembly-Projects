@@ -4,7 +4,8 @@
 userchoice: .space 4
 headNodeAddr: .word 0
 curNodeAddr: .word 0
-addrArr: .word 100
+# TODO dynamic resizing of this addrArr for amortised runtime/memory gains
+addrArr: .space 100
 addrArrCount: .space 1
 
 intro: .asciiz "\nLinked Stack initialised.\n"
