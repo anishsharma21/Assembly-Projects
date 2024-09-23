@@ -19,6 +19,7 @@ valstr: .asciiz "\nThe value of this node is: "
 setvalstr: .asciiz "\nSet the value to: "
 setvalstr2: .asciiz "\nValue set!\n"
 lengthstr: .asciiz "\nLength of linked list: "
+reusestr: .asciiz "\nReusing memory for node\n"
 newline: .asciiz "\n"
 
 choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, p, r, s, l, or q.\n"
@@ -123,13 +124,13 @@ setVal:
 
     j mainLoop
 
-# TODO check in mem addr arr for nodes that can be used instead, print something to indicate that a previous node is being used for the new node (to see if memory allocation is working as anticipated)
-# strategy I am thinking of going with is using another static data item, which indicates how many nodes are available for reuse, we check this first, if its 0, then we just dynamically allocate, otherwise, we get that address stored int the mem addr array and put it in v0 
+# TODO check that dynamic mem allocation works as anticipated with manual testing
 pushNode:
     # first check if node exists for reuse
     la $a0, addrArrCount
     lb $t0, ($a0)
-    # this jal proc checks for mem reuse or just dynamic alloc as usual
+
+    # this jal proc checks for mem reuse or just dynamic alloc as usual, places addr in v0
     jal allocateMemForNode
 
     la $a0, headNodeAddr                        # get pointer to head node addr
@@ -179,24 +180,47 @@ popNode:
     j saveAddr
 
 allocateMemForNode:
-    # TODO check t0, if its 0, dynamic alloc, otherwise, minus 1, sll 2, and get addr to node for reuse
+    # if addr count not 0, reuse prev node addr space, else proceed with dyn alloc
     bne $t0, 0, reuseMemForNode
+
     # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
     li $a0, 8
     li $v0, 9
     syscall
+    jr $ra
 
 reuseMemForNode:
-    # TODO requires implementation
+    addi $t0, -1                                # 0 based idxing, 1 item means start at idx 0
+    sll $t0, $t0, 2                             # calc offset for node reuse addr
+
+    # -1 from addr arr count
+    la $t1, addrArrCount
+    lb $t2, ($t1)
+    addi $t2, -1
+    sb $t2, ($t1)
+
+    la $a0, reusestr
+    move $t1, $v0
+    li $v0, 4
+    syscall
+    move $v0, $t1
+
+    la $v0, addrArr
+    add $v0, $v0, $t0                           # pointer to addr
+    lw $v0, ($v0)                               # load the actual addr
+    jr $ra
 
 saveAddr:
+    # TODO we don't need to iteratively check, we can just use addrArrCount
     # iteratively check for next free space in addr management array
     lw $t0, ($a0)
-    addi $a0, 4
+    addi $a0, 4                                 # pre-emptive next addr
     bne $t0, 0, saveAddr
 
     # store popped node addr for future use in addr management arr
+    addi $a0, -4                                # negate pre-emptive next addr
     sw $a1, ($a0)
+
     la $a0, addrArrCount                        # incr addrArrCount
     lb $t0, ($a0)
     addi $t0, 1
