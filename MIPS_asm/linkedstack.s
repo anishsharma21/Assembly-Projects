@@ -173,6 +173,7 @@ pushNode:
     li $a1, 0
     la $a2, addrArrCount
     lb $a2, ($a2)
+    beq $a2, 0, mainLoop
     jal printArr
 
     j mainLoop
@@ -206,6 +207,7 @@ allocateMemForNode:
     syscall
     jr $ra
 
+# TODO fix error where addresses in addr arr are being used at the same time
 reuseMemForNode:
     addi $t0, -1                                # 0 based idxing, 1 item means start at idx 0
     sll $t0, $t0, 2                             # calc offset for node reuse addr
@@ -221,11 +223,10 @@ reuseMemForNode:
     li $v0, 4
     syscall
 
-    move $v0, $t1
-
     la $v0, addrArr
     add $v0, $v0, $t0                           # pointer to addr
     lw $v0, ($v0)                               # load the actual addr
+    sw $zero, ($v0)                             # clear value
     jr $ra
 
 saveAddr:
@@ -257,20 +258,19 @@ saveAddr:
     li $a1, 0
     la $a2, addrArrCount
     lb $a2, ($a2)
+    beq $a2, 0, mainLoop
     jal printArr
 
     j goToHead
 
 printArr:
     # a0 addr of addr arr, a1 for cur idx, a2 for addr arr len
-    beq $a2, 0, mainLoop
     move $t0, $a0
 
     lw $a0, ($a0)
     li $v0, 1
     syscall
 
-    addi $a0, 4
     addi $a1, 1
     blt $a1, $a2, printSep
 
@@ -285,6 +285,7 @@ printSep:
     syscall
 
     move $a0, $t0
+    addi $a0, 4
     j printArr
 
 findLength:
