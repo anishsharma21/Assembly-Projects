@@ -21,7 +21,9 @@ setvalstr: .asciiz "\nSet the value to: "
 setvalstr2: .asciiz "\nValue set!\n"
 lengthstr: .asciiz "\nLength of linked list: "
 reusestr: .asciiz "\nReusing memory for node\n"
+arrstr: .asciiz "\nAddress Array: "
 newline: .asciiz "\n"
+sep: .asciiz ", "
 
 choiceerr: .asciiz "\nInvalid choice. Choose from h, n, v, p, r, s, l, or q.\n"
 nexterrstr: .asciiz "\nThere is no next value.\n"
@@ -125,7 +127,6 @@ setVal:
 
     j mainLoop
 
-# TODO check that dynamic mem allocation works as anticipated with manual testing
 pushNode:
     # first check if node exists for reuse
     la $a0, addrArrCount
@@ -159,6 +160,16 @@ pushNode:
     la $a0, pushedstr
     li $v0, 4
     syscall
+
+    la $a0, arrstr
+    syscall
+
+    la $a0, addrArr
+    li $a1, 0
+    la $a2, addrArrCount
+    lb $a2, ($a2)
+    jal printArr
+
     j mainLoop
 
 popNode:
@@ -204,6 +215,7 @@ reuseMemForNode:
     move $t1, $v0
     li $v0, 4
     syscall
+
     move $v0, $t1
 
     la $v0, addrArr
@@ -230,6 +242,29 @@ saveAddr:
 
 printArr:
     # TODO should be generalised, but immediate use case is for printing contents of addr arr
+    # a0 addr of addr arr, a1 for cur idx, a2 for addr arr len
+    move $t0, $a0
+
+    lw $a0, ($a0)
+    li $v0, 1
+    syscall
+
+    addi $a0, 4
+    addi $a1, 1
+    blt $a1, $a2, printSep
+
+    la $a0, newline
+    li $v0, 4
+    syscall
+    jr $ra
+
+printSep:
+    la $a0, sep
+    li $v0, 4
+    syscall
+
+    move $a0, $t0
+    j printArr
 
 findLength:
     la $a0, headNodeAddr
