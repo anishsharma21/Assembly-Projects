@@ -238,11 +238,22 @@ saveAddr:
     lb $t0, ($a0)
     addi $t0, 1
     sb $t0, ($a0)
+
+    la $a0, arrstr
+    li $v0, 4
+    syscall
+
+    la $a0, addrArr
+    li $a1, 0
+    la $a2, addrArrCount
+    lb $a2, ($a2)
+    jal printArr
+
     j goToHead
 
 printArr:
-    # TODO should be generalised, but immediate use case is for printing contents of addr arr
     # a0 addr of addr arr, a1 for cur idx, a2 for addr arr len
+    beq $a2, 0, mainLoop
     move $t0, $a0
 
     lw $a0, ($a0)
