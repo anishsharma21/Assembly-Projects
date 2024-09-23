@@ -1,4 +1,5 @@
 # this is a linked list stack - head always points to the latest pushed stack, new nodes point to previous nodes 
+# there is also dynamic memory management of nodes - when they are popped, the memory addresses to the nodes are saved for later use
 .data
 
 userchoice: .space 4
@@ -6,7 +7,7 @@ headNodeAddr: .word 0
 curNodeAddr: .word 0
 # TODO dynamic resizing of this addrArr for amortised runtime/memory gains
 addrArr: .space 100
-addrArrCount: .space 1
+addrArrCount: .byte 0
 
 intro: .asciiz "\nLinked Stack initialised.\n"
 choice1: .asciiz "\nChoose head (h), next (n), val (v), push (p), pop/remove (r), set val (s), length (l), or quit (q)\n"
@@ -199,7 +200,8 @@ popNode:
 
 allocateMemForNode:
     # if addr count not 0, reuse prev node addr space, else proceed with dyn alloc
-    bne $t0, 0, reuseMemForNode
+    bgt $t0, 0, reuseMemForNode
+    blt $t0, 0, PopError
 
     # dynamic alloc 8 bytes for new node, 4b for val, 4b for addr
     li $a0, 8
@@ -209,9 +211,6 @@ allocateMemForNode:
 
 # TODO fix error where addresses in addr arr are being used at the same time
 reuseMemForNode:
-    addi $t0, -1                                # 0 based idxing, 1 item means start at idx 0
-    sll $t0, $t0, 2                             # calc offset for node reuse addr
-
     # -1 from addr arr count
     la $t1, addrArrCount
     lb $t2, ($t1)
@@ -223,21 +222,22 @@ reuseMemForNode:
     li $v0, 4
     syscall
 
+    sll $t2, $t2, 2                             # calc offset for node reuse addr
+
     la $v0, addrArr
-    add $v0, $v0, $t0                           # pointer to addr
+    add $v0, $v0, $t2                           # pointer to addr
+    move $t0, $v0
     lw $v0, ($v0)                               # load the actual addr
-    sw $zero, ($v0)                             # clear value
+    sw $zero, ($t0)                             # clear value
     jr $ra
 
 saveAddr:
-    # TODO we don't need to iteratively check, we can just use addrArrCount
-    # iteratively check for next free space in addr management array
-    lw $t0, ($a0)
-    addi $a0, 4                                 # pre-emptive next addr
-    bne $t0, 0, saveAddr
+    la $t0, addrArrCount
+    lb $t0, ($t0)
+    sll $t0, $t0, 2
+    add $a0, $a0, $t0
 
     # store popped node addr for future use in addr management arr
-    addi $a0, -4                                # negate pre-emptive next addr
     sw $a1, ($a0)
 
     la $a0, addrArrCount                        # incr addrArrCount
@@ -245,11 +245,6 @@ saveAddr:
     addi $t0, 1
     sb $t0, ($a0)
 
-    la $a0, addrArrCount
-    lb $a0, ($a0)
-    beq $a0, 0, mainLoop
-
-    # only print addr arr if arr is not empty
     la $a0, arrstr
     li $v0, 4
     syscall
