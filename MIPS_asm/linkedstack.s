@@ -161,6 +161,11 @@ pushNode:
     li $v0, 4
     syscall
 
+    la $a0, addrArrCount
+    lb $a0, ($a0)
+    beq $a0, 0, mainLoop
+
+    # only print addr arr if arr is not empty
     la $a0, arrstr
     syscall
 
@@ -239,6 +244,11 @@ saveAddr:
     addi $t0, 1
     sb $t0, ($a0)
 
+    la $a0, addrArrCount
+    lb $a0, ($a0)
+    beq $a0, 0, mainLoop
+
+    # only print addr arr if arr is not empty
     la $a0, arrstr
     li $v0, 4
     syscall
