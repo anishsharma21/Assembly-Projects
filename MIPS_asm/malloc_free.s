@@ -11,3 +11,26 @@
 # - Instead of searching the allocated-list for the names that match the inputted variable name for freeing, we should keep a hash potentially of each value that is stored in a byte
 
 .data
+
+IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
+NamePromptStr: .asciiz "Pick a name for the variable: "
+SpacePromptStr: .asciiz "How much space do you want to store: "
+MallocSuccessStr: .asciiz " was allocated at "
+
+MallocErr: .asciiz "Memory allocation error occurred!"
+
+newline: .asciiz "\n"
+sep: .asciiz ", "
+
+.text
+
+main:
+    la $a0, IntroStr
+    li $v0, 4
+    syscall
+
+    j end
+
+end:
+    li $v0, 10
+    syscall
