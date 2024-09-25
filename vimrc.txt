@@ -9,6 +9,7 @@ filetype on
 syntax on
 set relativenumber
 set number
+set ruler
 set wildmenu
 set wildmode=list:longest
 set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx
@@ -20,3 +21,4 @@ set mouse=a
 set background=dark
 set title
 set nocompatible
+set showcmd

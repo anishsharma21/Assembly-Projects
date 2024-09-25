@@ -1,6 +1,8 @@
 .data
 
 NameBuffer: .space 200
+CurMallocListAddr: .byte 0
+CurFreeListAddr: .byte 0
 
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
 NamePromptStr: .asciiz "Pick a name for the variable: "
@@ -17,6 +19,18 @@ sep: .asciiz ", "
 .globl malloc
 
 main:
+    # create malloc-list
+    li $a0, 5                                           # space for 5 bytes (addresses)
+    li $v0, 9
+    la $a0, CurMallocListAddr
+    sw $v0, ($a0)
+
+    # create free-list
+    li $a0, 5                                           # space for 5 bytes (addresses)
+    li $v0, 9
+    la $a0, CurFreeListAddr
+    sw $v0, ($a0)
+
     la $a0, IntroStr
     li $v0, 4
     syscall
