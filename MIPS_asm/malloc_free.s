@@ -1,5 +1,7 @@
 .data
 
+NameBuffer: .space 200
+
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
 NamePromptStr: .asciiz "Pick a name for the variable: "
 SpacePromptStr: .asciiz "How much space do you want to store: "
@@ -11,6 +13,8 @@ newline: .asciiz "\n"
 sep: .asciiz ", "
 
 .text
+.globl main
+.globl malloc
 
 main:
     la $a0, IntroStr
@@ -20,7 +24,26 @@ main:
     la $a0, NamePromptStr
     syscall
 
+    la $a0, NameBuffer
+    la $a1, 200                                         # large enough buffer for long names (up to 50 char)
+    li $v0, 8
+    syscall
+
+    la $a0, SpacePromptStr
+    li $v0, 4
+    syscall
+
+    li $v0, 5
+    syscall
+
+    move $a0, $v0
+    la $a1, NameBuffer
+    jal malloc
+
     j end
+
+malloc:
+    jr $ra
 
 end:
     li $v0, 10
