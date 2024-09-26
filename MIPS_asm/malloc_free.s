@@ -38,7 +38,6 @@ main:
     li $v0, 4
     syscall
 
-    # TODO name len check should happen right after allocation
     # TODO name must be unique
     la $a0, NamePromptStr
     syscall
@@ -47,6 +46,11 @@ main:
     la $a1, 200                                         # large enough buffer for long names (up to 50 char)
     li $v0, 8
     syscall
+
+    la $a0, NameBuffer
+    li $v0, 0
+    jal FindNameLen
+    ble $v0, 0, NameLenError
 
     la $a0, SpacePromptStr
     li $v0, 4
@@ -57,22 +61,10 @@ main:
 
     la $a0, NameBuffer
     move $a1, $v0                                       # space val
+
     j malloc
 
-    j end
-
 malloc:
-    # find length of name
-    move $s0, $a0
-    li $v0, 0
-    jal FindNameLen
-    move $a0, $s0
-    ble $v0, 0, NameLenError
-
-    move $a0, $v0
-    li $v0, 1
-    syscall
-
     j end
 
 FindNameLen:
