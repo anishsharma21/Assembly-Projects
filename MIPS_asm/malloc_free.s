@@ -16,6 +16,7 @@ FreeListCount: .byte 0
 FreeListCap: .word 4
 
 NameBuffer: .space 200
+ChoiceBuffer: .space 4
 
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
 NamePromptStr: .asciiz "Pick a name for the variable: "
@@ -67,6 +68,35 @@ main:
     li $v0, 4
     syscall
 
+    j malloc
+
+main_loop:
+    # block allocated or memory freed str loaded in before calling main_loop
+    li $v0, 4
+    syscall
+
+    la $a0, ChoiceStr
+    syscall
+    la $a0, ChoicePromptStr
+    syscall
+
+    la $a0, ChoiceBuffer
+    li $a1, 4
+    li $v0, 8
+    syscall
+
+    la $a0, ChoiceBuffer
+    lb $a0, ($a0)
+    beq $a0, 97, malloc
+    # beq $a0, 102, free
+    beq $a0, 113, end
+
+    la $a0, ChoiceErr
+    li $v0, 4
+    syscall
+    j main_loop
+
+malloc:
     la $a0, NamePromptStr
     syscall
 
@@ -92,22 +122,10 @@ main:
     move $a2, $v0
 
     la $a0, NameBuffer
-    j malloc
-
-main_loop:
-    # block allocated or memory freed str loaded in before calling main_loop
-    li $v0, 4
-    syscall
-
-    la $a0, ChoiceStr
-    syscall
-    la $a0, ChoicePromptStr
-    syscall
-
-    j end
+    j malloc_main
 
 # a0 is name buffer, a1 is name len, a2 is space len
-malloc:
+malloc_main:
     # TODO find block with minimum size requirement rather than first suitable one
     # TODO free list should be sorted by len of each block so binary search can be used
     # TODO binary search to find block with enough space
