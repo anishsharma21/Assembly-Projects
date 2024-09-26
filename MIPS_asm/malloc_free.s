@@ -1,8 +1,9 @@
 .data
 
+ManagedHeapBP: .byte 0
+MallocListBP: .byte 0
+FreeListBP: .byte 0
 NameBuffer: .space 200
-CurMallocListAddr: .byte 0
-CurFreeListAddr: .byte 0
 
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
 NamePromptStr: .asciiz "Pick a name for the variable: "
@@ -25,14 +26,14 @@ main:
     li $a0, 5                                           # space for 5 bytes (addresses)
     li $v0, 9
     syscall
-    la $a0, CurMallocListAddr
+    la $a0, MallocListBP
     sb $v0, ($a0)
 
     # create free-list
     li $a0, 5
     li $v0, 9
     syscall
-    la $a0, CurFreeListAddr
+    la $a0, FreeListBP
     sb $v0, ($a0)
 
     la $a0, IntroStr
@@ -51,6 +52,7 @@ main:
     li $v0, 0
     jal FindNameLen
     ble $v0, 0, NameLenError
+    move $a1, $v0
     # TODO name must be unique check
     # la $a0, NameBuffer
     # jal UniqueNameCheck
@@ -62,13 +64,18 @@ main:
 
     li $v0, 5
     syscall
+    move $a2, $v0
 
     la $a0, NameBuffer
-    move $a1, $v0                                       # space val
-
     j malloc
 
+# a0 is name buffer, a1 is name len, a2 is space len
 malloc:
+    # first find total mem block size based on metadata format
+    add $t0, $a1, $a2
+    addi $t0, 1
+
+    # check alloc list for any space 
     j end
 
 FindNameLen:
@@ -80,7 +87,7 @@ FindNameLen:
     addi $v0, -1
     jr $ra
 
-UniqueNameCheck:
+# UniqueNameCheck:
 
 NameLenError:
     la $a0, NameLenErr
@@ -102,7 +109,7 @@ end:
     syscall
 
 #################################################################################################################
-# NOTE THIS IS IMPORTANT: you can do block coalescing, movement, defragmentation, etc, if you just start by allocating a chunk of space in the heap, and then manually moving and assiging each and every block in that area, i.e. you only need to make the sbrk syscall once! THIS IS SUPER CRUCIAL - this would be a true memory manager, a truly malloc/free implementation - first implementation will be simpler though, this is much tougher
+# NOTE we will be using a managed heap for memory allocation of blocks, so no dynamic allocation of memory blocks using sbrk, all variable address pointers are to positions on the heap so that block coalescing and defragmentation can be implemented too
 
 # thinking through my implementation here:
 # - user types in name for variable, then they enter integer for number of bytes of space for it - keeping things super simple to start with
