@@ -26,6 +26,8 @@ AllocatedBlockStr: .asciiz "\nMemory block allocated: "
 BlockAllocatedStr: .asciiz "\n### You've allocated a block of memory! ###\n"
 ChoiceStr: .asciiz "\nNow, would you like to allocate (a) or free (f) memory?"
 ChoicePromptStr: .asciiz "\nChoice: "
+OpenBracketStr: .asciiz "["
+ClosedBracketStr: .asciiz "]"
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -153,12 +155,18 @@ malloc_main:
     li $v0, 4
     syscall
 
+    la $a0, OpenBracketStr
+    li $v0, 4
+    syscall
     move $a0, $s1
     lb $a1, ($a0)
     jal PrintAllocBlock
 
     la $a0, BlockAllocatedStr
     j main_loop
+
+free:
+    # TODO implement
 
 # a0 is new block size
 GetAllocAddr:
@@ -169,7 +177,7 @@ GetAllocAddr:
     la $t0, FreeListBP
     lw $t0, ($t0)
 
-    # TODO complete this subroutine
+    # TODO complete this subroutine using free list
     j end
 
 # a0 is new block size
@@ -197,7 +205,6 @@ ManagedHeapAlloc:
 # a0 is base addr of name buffer, a1 is addr for alloc
 StoreName:
     lb $t0, ($a0)
-
     sb $t0, ($a1)
     addi $a0, 1
     addi $a1, 1
@@ -226,6 +233,9 @@ PrintAllocBlock:
     addi $a0, 1
     addi $a1, -1
     bge $a1, 0, PrintSep
+    la $a0, ClosedBracketStr
+    li $v0, 4
+    syscall
     la $a0, newline
     li $v0, 4
     syscall
@@ -243,16 +253,13 @@ HeapOverflowError:
     la $a0, HeapOverflowErr
     li $v0, 4
     syscall
-
     j end
 
 NameLenError:
     la $a0, NameLenErr
     li $v0, 4
     syscall
-
-    # TODO jumps to choice loop, only temp going to end
-    j end
+    j main_loop
 
 NameNotUniqueError:
     la $a0, NameNotUniqueErr
