@@ -2,15 +2,18 @@
 
 ## Summary and Highlights
 
-* Text editor of choice: ![Vim](https://img.shields.io/badge/-Vim-333333?style=flat&logo=vim)&nbsp;
 * Brief work in `x86` and `ARMv8` assembly
 * Over 40 `MIPS` assembly programs including:
+    * [Binary search](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/binary_search.s), [Bubble sort](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/bubble_sort.s), [Insertion sort](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/insertion_sort.s)
     * [Recursive factorial](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/recursive_factorial.s) & [Fibonnaci](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/recursive_fibonacci.s) (stack pointer manipulation)
     * [Sieve of Eratosthenes](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/sieve_of_eratosthenes.s)
-    * [Binary search](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/binary_search.s), [Bubble sort](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/bubble_sort.s), [Insertion sort](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/insertion_sort.s)
     * [Linked List](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedlist.s), [Linked Stack](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedstack.s)
         * Memory management of nodes (addresses stored in static-array for reuse)
-    * `malloc` and `free` in assembly (in progress)
+    * [malloc/free - Memory Manager](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/malloc_free.s) (in progress)
+        * Dynamic memory allocation/deallocation in a self-managed heap
+        * Dynamic resizing of heap, alloc-list, and free-list
+        * Block Splitting, Block Coalescing, Defragmentation
+* Text editor of choice: ![Vim](https://img.shields.io/badge/-Vim-333333?style=flat&logo=vim)&nbsp;
 
 ## Introduction
 
