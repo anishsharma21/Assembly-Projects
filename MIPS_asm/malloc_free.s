@@ -25,6 +25,7 @@ MallocSuccessStr: .asciiz " was allocated at "
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
 NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
+ManagedHeapCapacityErr: .asciiz "\nManaged heap is full\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -96,10 +97,41 @@ malloc:
     add $t0, $a1, $a2
     addi $t0, 1
 
+    # TODO find block with minimum size requirement rather than first suitable one
+    # TODO free list should be sorted by len of each block so binary search can be used
+    # TODO binary search to find block with enough space
     # TODO block splitting: check free list for large blocks that can be split
-    # go through malloc list, compare len, if new len < old len, alloc at that addr
-    # if no suitable addr found, alloc in managed heap using next pointer, update next pointer
+    # TODO use binary tree DS for free and malloc list for faster insert/delete of new nodes
+    # go through malloc list until first suitable block found 
+    # if no suitable block found, alloc in managed heap using next pointer, update next pointer
+    move $s0, $a0
+    move $a0, $t0
+    jal GetAllocAddr
+    move $a0, $s0
 
+    j end
+
+GetAllocAddr:
+    la $t0, FreeListCount
+    lb $t0, ($t0)
+    beq $t0, 0, ManagedHeapAlloc
+    la $t0, FreeListBP
+    lw $t0, ($t0)
+
+    # TODO complete this subroutine
+    j end
+
+ManagedHeapAlloc:
+    la $t0, ManagedHeapNP
+    lw $t0, ($t0)
+    la $t1, ManagedHeapCap
+    lb $t1, ($t1)
+
+    add $t0, $t0, $a0
+    # TODO this has a bug, suitable allocation is still erroring
+    bge $t0, $t1, ManagedHeapCapacityError
+
+    # TODO return addr for managed heap alloc
     j end
 
 FindNameLen:
@@ -108,10 +140,18 @@ FindNameLen:
     addi $v0, 1
     addi $a0, 1
     bne $t0, 10, FindNameLen
+    # TODO include null terminating byte/s
     addi $v0, -1
     jr $ra
 
 # UniqueNameCheck:
+
+ManagedHeapCapacityError:
+    la $a0, ManagedHeapCapacityErr
+    li $v0, 4
+    syscall
+
+    j end
 
 NameLenError:
     la $a0, NameLenErr
@@ -127,6 +167,7 @@ NameNotUniqueError:
     syscall
 
     # TODO prints malloc list to show options, then jumps to main choices
+    j end
 
 end:
     li $v0, 10
