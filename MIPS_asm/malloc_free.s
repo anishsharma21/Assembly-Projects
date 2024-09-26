@@ -1,8 +1,20 @@
 .data
 
-ManagedHeapBP: .byte 0
-MallocListBP: .byte 0
-FreeListBP: .byte 0
+.align 2
+ManagedHeapBP: .space 4
+ManagedHeapNP: .space 4
+ManagedHeapCap: .byte 1024
+
+.align 2
+MallocListBP: .space 4
+MallocListCount: .byte 0
+MallocListCap: .byte 4
+
+.align 2
+FreeListBP: .space 4
+FreeListCount: .byte 0
+FreeListCap: .byte 4
+
 NameBuffer: .space 200
 
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
@@ -22,19 +34,28 @@ sep: .asciiz ", "
 .globl malloc
 
 main:
-    # create malloc-list
-    li $a0, 5                                           # space for 5 bytes (addresses)
+    # allocate mem for managed heap
+    li $a0, 1024                                        # 1024 bytes of space in managed heap
+    li $v0, 9
+    syscall
+    la $a0, ManagedHeapBP                               # base pointer for managed heap
+    sw $v0, ($a0)
+    la $a0, ManagedHeapNP                               # next pointer for managed heap
+    sw $v0, ($a0)
+
+    # allocate mem for malloc-list
+    li $a0, 16                                          # space for 4 malloc addresses
     li $v0, 9
     syscall
     la $a0, MallocListBP
-    sb $v0, ($a0)
+    sw $v0, ($a0)
 
-    # create free-list
-    li $a0, 5
+    # allocate mem for free-list
+    li $a0, 16                                          # space for 4 free addresses
     li $v0, 9
     syscall
     la $a0, FreeListBP
-    sb $v0, ($a0)
+    sw $v0, ($a0)
 
     la $a0, IntroStr
     li $v0, 4
@@ -75,7 +96,10 @@ malloc:
     add $t0, $a1, $a2
     addi $t0, 1
 
-    # check alloc list for any space 
+    # TODO block splitting: check free list for large blocks that can be split
+    # go through malloc list, compare len, if new len < old len, alloc at that addr
+    # if no suitable addr found, alloc in managed heap using next pointer, update next pointer
+
     j end
 
 FindNameLen:
