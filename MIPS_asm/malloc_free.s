@@ -93,21 +93,27 @@ main:
 
 # a0 is name buffer, a1 is name len, a2 is space len
 malloc:
-    # first find total mem block size based on metadata format
-    add $t0, $a1, $a2
-    addi $t0, 1
-
     # TODO find block with minimum size requirement rather than first suitable one
     # TODO free list should be sorted by len of each block so binary search can be used
     # TODO binary search to find block with enough space
     # TODO block splitting: check free list for large blocks that can be split
     # TODO use binary tree DS for free and malloc list for faster insert/delete of new nodes
-    # go through malloc list until first suitable block found 
-    # if no suitable block found, alloc in managed heap using next pointer, update next pointer
-    move $s0, $a0
+
+    # first find total mem block size based on metadata format
+    add $s0, $a1, $a2
+    addi $t0, 2                                         # for len byte at start, and null term of str
     move $a0, $t0
     jal GetAllocAddr
-    move $a0, $s0
+
+    add $t0, $v0, $s0                                   # add returned addr and block size
+    la $t1, ManagedHeapNP
+    sw $t0, ($t1)                                       # store updated managed heap next pointer
+    sb $t0, ($v0)                                       # store len in first byte
+    addi $v0, 1
+    move $a1, $v0
+    jal StoreName
+
+    # TODO confirm alloc by printing len of mem block
 
     j end
 
@@ -116,6 +122,7 @@ GetAllocAddr:
     la $t0, FreeListCount
     lb $t0, ($t0)
     beq $t0, 0, ManagedHeapAlloc
+
     la $t0, FreeListBP
     lw $t0, ($t0)
 
@@ -135,13 +142,26 @@ ManagedHeapAlloc:
     add $t0, $t0, $t2
 
     # addr for last byte in managed heap if allocated
-    add $t1, $t1, $a0
+    add $t3, $t1, $a0
+    addi $t3, -1                                        # 0 based idxing
 
     # TODO instead of err, should dynamically resize heap
-    bgt $t1, $t0, HeapOverflowError
+    bgt $t3, $t0, HeapOverflowError
 
-    # TODO return addr for managed heap alloc
-    j end
+    move $v0, $t1
+    jr $ra
+
+# a0 is base addr of name buffer, a1 is addr for alloc
+StoreName:
+    lb $t0, ($a0)
+    sb $t0, ($a1)
+    addi $a0, 1
+    addi $a1, 1
+    bne $t0, 0, StoreName
+
+    li $t0, 0                                           # null termination of ascii str
+    lb $t0, ($a1)
+    jr $ra
 
 FindNameLen:
     # lb until line feed (10)
@@ -149,8 +169,6 @@ FindNameLen:
     addi $v0, 1
     addi $a0, 1
     bne $t0, 10, FindNameLen
-    # TODO include null terminating byte/s
-    addi $v0, -1
     jr $ra
 
 # UniqueNameCheck:
