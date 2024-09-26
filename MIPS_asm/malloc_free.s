@@ -21,6 +21,7 @@ IntroStr: .asciiz "############################################\n#              
 NamePromptStr: .asciiz "Pick a name for the variable: "
 SpacePromptStr: .asciiz "How much space do you want to store: "
 MallocSuccessStr: .asciiz " was allocated at "
+AllocatedBlockStr: .asciiz "\nMemory block allocated: "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -74,11 +75,9 @@ main:
     li $v0, 0
     jal FindNameLen
     ble $v0, 0, NameLenError
+
     move $a1, $v0
     # TODO name must be unique check
-    # la $a0, NameBuffer
-    # jal UniqueNameCheck
-    # beq $v0, 0, NameNotUniqueError
 
     la $a0, SpacePromptStr
     li $v0, 4
@@ -102,6 +101,7 @@ malloc:
     # first find total mem block size based on metadata format
     add $s0, $a1, $a2
     addi $t0, 2                                         # for len byte at start, and null term of str
+    move $s2, $t0
     move $a0, $t0
     jal GetAllocAddr
     move $s1, $v0
@@ -115,9 +115,12 @@ malloc:
     move $a1, $v0
     jal StoreName
 
-    # TODO confirm alloc by printing len of mem block
-    la $a0, NameBuffer
-    move $a1, $s1
+    la $a0, AllocatedBlockStr
+    li $v0, 4
+    syscall
+
+    move $a0, $s1
+    lb $a1, ($a0)
     jal PrintAllocBlock
 
     j end
@@ -178,44 +181,28 @@ FindNameLen:
     bne $t0, 10, FindNameLen
     jr $ra
 
-# UniqueNameCheck:
-
 # a0 is base addr of new mem block, a1 is size
 PrintAllocBlock:
     move $s0, $a0
-    # print block size first
     lb $a0, ($a0)
     li $v0, 1
     syscall
-
-    la $a0, sep
-    li $v0, 4
-    syscall
-
     move $a0, $s0
     addi $a0, 1
     addi $a1, -1
+    bge $a1, 0, PrintSep
+    la $a0, newline
+    li $v0, 4
     syscall
+    jr $ra
 
+PrintSep:
+    move $s0, $a0
     la $a0, sep
+    li $v0, 4
     syscall
-
-    # TODO print rest of the space too
-    la $a0, NameBuffer
-    li $v0, 0
-    jal FindNameLen
-    sub $a1, $a1, $v0
-
-    li $a0, 0
-    li $v0, 1
-    bgt $a1, 0, PrintBlockSpace
-    jr $ra
-
-PrintBlockSpace:
-    syscall
-    addi $a1, -1
-    bgt $a1, 0, PrintBlockSpace
-    jr $ra
+    move $a0, $s0
+    j PrintAllocBlock
 
 HeapOverflowError:
     la $a0, HeapOverflowErr
