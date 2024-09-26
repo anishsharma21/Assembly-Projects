@@ -11,6 +11,7 @@ MallocSuccessStr: .asciiz " was allocated at "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
+NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -38,7 +39,6 @@ main:
     li $v0, 4
     syscall
 
-    # TODO name must be unique
     la $a0, NamePromptStr
     syscall
 
@@ -51,6 +51,10 @@ main:
     li $v0, 0
     jal FindNameLen
     ble $v0, 0, NameLenError
+    # TODO name must be unique check
+    # la $a0, NameBuffer
+    # jal UniqueNameCheck
+    # beq $v0, 0, NameNotUniqueError
 
     la $a0, SpacePromptStr
     li $v0, 4
@@ -76,13 +80,22 @@ FindNameLen:
     addi $v0, -1
     jr $ra
 
+UniqueNameCheck:
+
 NameLenError:
     la $a0, NameLenErr
     li $v0, 4
     syscall
 
-    # TODO jumps to alloc loop, only temp going to end
+    # TODO jumps to choice loop, only temp going to end
     j end
+
+NameNotUniqueError:
+    la $a0, NameNotUniqueErr
+    li $v0, 4
+    syscall
+
+    # TODO prints malloc list to show options, then jumps to main choices
 
 end:
     li $v0, 10
