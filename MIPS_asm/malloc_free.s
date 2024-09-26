@@ -3,17 +3,17 @@
 .align 2
 ManagedHeapBP: .space 4
 ManagedHeapNP: .space 4
-ManagedHeapCap: .byte 1024
+ManagedHeapCap: .word 1024
 
 .align 2
 MallocListBP: .space 4
 MallocListCount: .byte 0
-MallocListCap: .byte 4
+MallocListCap: .word 4
 
 .align 2
 FreeListBP: .space 4
 FreeListCount: .byte 0
-FreeListCap: .byte 4
+FreeListCap: .word 4
 
 NameBuffer: .space 200
 
@@ -25,7 +25,7 @@ MallocSuccessStr: .asciiz " was allocated at "
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
 NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
-ManagedHeapCapacityErr: .asciiz "\nManaged heap is full\n"
+HeapOverflowErr: .asciiz "\nManaged heap is full\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -111,6 +111,7 @@ malloc:
 
     j end
 
+# a0 is new block size
 GetAllocAddr:
     la $t0, FreeListCount
     lb $t0, ($t0)
@@ -121,15 +122,23 @@ GetAllocAddr:
     # TODO complete this subroutine
     j end
 
+# a0 is new block size
 ManagedHeapAlloc:
-    la $t0, ManagedHeapNP
+    la $t0, ManagedHeapBP
     lw $t0, ($t0)
-    la $t1, ManagedHeapCap
-    lb $t1, ($t1)
+    la $t1, ManagedHeapNP
+    lw $t1, ($t1)
+    la $t2, ManagedHeapCap
+    lw $t2, ($t2)
 
-    add $t0, $t0, $a0
-    # TODO this has a bug, suitable allocation is still erroring
-    bge $t0, $t1, ManagedHeapCapacityError
+    # max addr in managed heap in bytes
+    add $t0, $t0, $t2
+
+    # addr for last byte in managed heap if allocated
+    add $t1, $t1, $a0
+
+    # TODO instead of err, should dynamically resize heap
+    bgt $t1, $t0, HeapOverflowError
 
     # TODO return addr for managed heap alloc
     j end
@@ -146,8 +155,8 @@ FindNameLen:
 
 # UniqueNameCheck:
 
-ManagedHeapCapacityError:
-    la $a0, ManagedHeapCapacityErr
+HeapOverflowError:
+    la $a0, HeapOverflowErr
     li $v0, 4
     syscall
 
