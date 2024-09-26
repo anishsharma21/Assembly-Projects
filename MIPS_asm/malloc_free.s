@@ -9,7 +9,8 @@ NamePromptStr: .asciiz "Pick a name for the variable: "
 SpacePromptStr: .asciiz "How much space do you want to store: "
 MallocSuccessStr: .asciiz " was allocated at "
 
-MallocErr: .asciiz "Memory allocation error occurred!"
+MallocErr: .asciiz "\nMemory allocation error occurred!\n"
+NameLenErr: .asciiz "\nName must be at least 1 char long\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -22,19 +23,23 @@ main:
     # create malloc-list
     li $a0, 5                                           # space for 5 bytes (addresses)
     li $v0, 9
+    syscall
     la $a0, CurMallocListAddr
-    sw $v0, ($a0)
+    sb $v0, ($a0)
 
     # create free-list
-    li $a0, 5                                           # space for 5 bytes (addresses)
+    li $a0, 5
     li $v0, 9
+    syscall
     la $a0, CurFreeListAddr
-    sw $v0, ($a0)
+    sb $v0, ($a0)
 
     la $a0, IntroStr
     li $v0, 4
     syscall
 
+    # TODO name len check should happen right after allocation
+    # TODO name must be unique
     la $a0, NamePromptStr
     syscall
 
@@ -50,20 +55,49 @@ main:
     li $v0, 5
     syscall
 
-    move $a0, $v0
-    la $a1, NameBuffer
-    jal malloc
+    la $a0, NameBuffer
+    move $a1, $v0                                       # space val
+    j malloc
 
     j end
 
 malloc:
+    # find length of name
+    move $s0, $a0
+    li $v0, 0
+    jal FindNameLen
+    move $a0, $s0
+    ble $v0, 0, NameLenError
+
+    move $a0, $v0
+    li $v0, 1
+    syscall
+
+    j end
+
+FindNameLen:
+    # lb until line feed (10)
+    lb $t0, ($a0)
+    addi $v0, 1
+    addi $a0, 1
+    bne $t0, 10, FindNameLen
+    addi $v0, -1
     jr $ra
+
+NameLenError:
+    la $a0, NameLenErr
+    li $v0, 4
+    syscall
+
+    # TODO jumps to alloc loop, only temp going to end
+    j end
 
 end:
     li $v0, 10
     syscall
 
 #################################################################################################################
+# NOTE THIS IS IMPORTANT: you can do block coalescing, movement, defragmentation, etc, if you just start by allocating a chunk of space in the heap, and then manually moving and assiging each and every block in that area, i.e. you only need to make the sbrk syscall once! THIS IS SUPER CRUCIAL - this would be a true memory manager, a truly malloc/free implementation - first implementation will be simpler though, this is much tougher
 
 # thinking through my implementation here:
 # - user types in name for variable, then they enter integer for number of bytes of space for it - keeping things super simple to start with
