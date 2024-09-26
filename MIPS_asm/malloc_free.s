@@ -104,16 +104,21 @@ malloc:
     addi $t0, 2                                         # for len byte at start, and null term of str
     move $a0, $t0
     jal GetAllocAddr
+    move $s1, $v0
 
     add $t0, $v0, $s0                                   # add returned addr and block size
     la $t1, ManagedHeapNP
     sw $t0, ($t1)                                       # store updated managed heap next pointer
     sb $t0, ($v0)                                       # store len in first byte
     addi $v0, 1
+    la $a0, NameBuffer
     move $a1, $v0
     jal StoreName
 
     # TODO confirm alloc by printing len of mem block
+    la $a0, NameBuffer
+    move $a1, $s1
+    jal PrintAllocBlock
 
     j end
 
@@ -154,6 +159,7 @@ ManagedHeapAlloc:
 # a0 is base addr of name buffer, a1 is addr for alloc
 StoreName:
     lb $t0, ($a0)
+
     sb $t0, ($a1)
     addi $a0, 1
     addi $a1, 1
@@ -163,6 +169,7 @@ StoreName:
     lb $t0, ($a1)
     jr $ra
 
+# a0 is base addr for name buffer, v0 is len returned
 FindNameLen:
     # lb until line feed (10)
     lb $t0, ($a0)
@@ -172,6 +179,43 @@ FindNameLen:
     jr $ra
 
 # UniqueNameCheck:
+
+# a0 is base addr of new mem block, a1 is size
+PrintAllocBlock:
+    move $s0, $a0
+    # print block size first
+    lb $a0, ($a0)
+    li $v0, 1
+    syscall
+
+    la $a0, sep
+    li $v0, 4
+    syscall
+
+    move $a0, $s0
+    addi $a0, 1
+    addi $a1, -1
+    syscall
+
+    la $a0, sep
+    syscall
+
+    # TODO print rest of the space too
+    la $a0, NameBuffer
+    li $v0, 0
+    jal FindNameLen
+    sub $a1, $a1, $v0
+
+    li $a0, 0
+    li $v0, 1
+    bgt $a1, 0, PrintBlockSpace
+    jr $ra
+
+PrintBlockSpace:
+    syscall
+    addi $a1, -1
+    bgt $a1, 0, PrintBlockSpace
+    jr $ra
 
 HeapOverflowError:
     la $a0, HeapOverflowErr
