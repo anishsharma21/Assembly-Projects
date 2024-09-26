@@ -22,11 +22,15 @@ NamePromptStr: .asciiz "Pick a name for the variable: "
 SpacePromptStr: .asciiz "How much space do you want to store: "
 MallocSuccessStr: .asciiz " was allocated at "
 AllocatedBlockStr: .asciiz "\nMemory block allocated: "
+BlockAllocatedStr: .asciiz "\n### You've allocated a block of memory! ###\n"
+ChoiceStr: .asciiz "\nNow, would you like to allocate (a) or free (f) memory?"
+ChoicePromptStr: .asciiz "\nChoice: "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
 NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
 HeapOverflowErr: .asciiz "\nManaged heap is full\n"
+ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, or q.\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -90,6 +94,18 @@ main:
     la $a0, NameBuffer
     j malloc
 
+main_loop:
+    # block allocated or memory freed str loaded in before calling main_loop
+    li $v0, 4
+    syscall
+
+    la $a0, ChoiceStr
+    syscall
+    la $a0, ChoicePromptStr
+    syscall
+
+    j end
+
 # a0 is name buffer, a1 is name len, a2 is space len
 malloc:
     # TODO find block with minimum size requirement rather than first suitable one
@@ -123,7 +139,8 @@ malloc:
     lb $a1, ($a0)
     jal PrintAllocBlock
 
-    j end
+    la $a0, BlockAllocatedStr
+    j main_loop
 
 # a0 is new block size
 GetAllocAddr:
