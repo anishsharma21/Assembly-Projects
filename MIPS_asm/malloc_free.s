@@ -232,7 +232,29 @@ FindNameLen:
     bne $t0, 10, FindNameLen
     jr $ra
 
-# TODO subroutine for printing memory space up until next pointer in managed heap
+# TODO account for empty heap where first byte is not valid
+# a0 is managed heap BP, a1 is managed heap NP
+PrintHeapAllocatedMemoryBlocks:
+    lb $t0, ($a0)                                       # load in len of first mem block
+    addi $a0, 1
+    # TODO check this logic
+    ble $a0, $a1, PrintHeapBlockName
+    jr $ra
+
+# TODO should be updating t0 - the block size - to know when to halt printing spaces
+PrintHeapBlockName:
+    move $t1, $a0
+    lb $a0, ($a0)
+    li $v0, 11                                          # print char
+    syscall
+    addi $t1, 1                                         # check next byte for null
+    lb $a0, ($t1)
+    beq $a0, 0, PrintHeapBlockSpace                     # if next byte null, print spaces
+    move $a0, $t1
+    j PrintHeapBlockName
+
+PrintHeapBlockSpace:
+    # TODO complete, using t0 to know when to stop
 
 # TODO if a1 is large, should print first 5, then ..., then last 5
 # a0 is base addr of new mem block, a1 is size of new mem block
