@@ -24,16 +24,19 @@ SpacePromptStr: .asciiz "How much space do you want to store: "
 MallocSuccessStr: .asciiz " was allocated at "
 AllocatedBlockStr: .asciiz "\nMemory block allocated: "
 BlockAllocatedStr: .asciiz "\n### You've allocated a block of memory! ###\n"
-ChoiceStr: .asciiz "\nNow, would you like to allocate (a) or free (f) memory?"
+ChoiceStr: .asciiz "\nNow, would you like to allocate (a), free (f), or display (d) memory?"
 ChoicePromptStr: .asciiz "\nChoice: "
 OpenBracketStr: .asciiz "["
 ClosedBracketStr: .asciiz "]"
+HeapDisplayedStr: .asciiz "\nHeap displayed above\n"
+ArrayStr: .asciiz "Array: "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
 NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
 HeapOverflowErr: .asciiz "\nManaged heap is full\n"
 ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, or q.\n"
+HeapEmptyErr: .asciiz "\nHeap is empty\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -73,10 +76,6 @@ main:
     j malloc
 
 main_loop:
-    # block allocated or memory freed str loaded in before calling main_loop
-    li $v0, 4
-    syscall
-
     la $a0, ChoiceStr
     syscall
     la $a0, ChoicePromptStr
@@ -91,6 +90,7 @@ main_loop:
     lb $a0, ($a0)
     beq $a0, 97, malloc
     # beq $a0, 102, free
+    beq $a0, 100, PrintArrSetup
     beq $a0, 113, end
 
     la $a0, ChoiceErr
@@ -113,6 +113,7 @@ malloc:
     jal FindNameLen
     ble $v0, 0, NameLenError
     move $a1, $v0
+    addi $a1, 1
     # TODO check that name is unique
 
     la $a0, SpacePromptStr
@@ -171,10 +172,21 @@ malloc_main:
     jal PrintAllocBlock
 
     la $a0, BlockAllocatedStr
+    li $v0, 4
+    syscall
+
     j main_loop
 
 free:
     # TODO implement
+
+DisplayHeap:
+    la $a0, ManagedHeapBP
+    lw $a0, ($a0)
+    la $a1, ManagedHeapNP
+    lw $a1, ($a1)
+    jal PrintHeapAllocatedMemoryBlocks
+    j main_loop
 
 # a0 is new block size
 GetAllocAddr:
@@ -230,15 +242,18 @@ FindNameLen:
     addi $v0, 1
     addi $a0, 1
     bne $t0, 10, FindNameLen
+    addi $v0, -1
     jr $ra
 
-# TODO account for empty heap where first byte is not valid
+# TODO account for empty heap where first call checks if len byte is 0
+# TODO should account for fragmentation, right now its just printing all data up until NP, might mean that last 4 bytes (word) of memory block point to next block (sequentially) - only becomes a problem when we implement block splitting/coalescing
+# TODO open and closed brackets for memory block printing
 # a0 is managed heap BP, a1 is managed heap NP
 PrintHeapAllocatedMemoryBlocks:
     lb $t0, ($a0)                                       # load in len of first mem block
     addi $a0, 1
-    # TODO check this logic
-    ble $a0, $a1, PrintHeapBlockName
+    addi $t0, -1
+    blt $a0, $a1, PrintHeapBlockName
     jr $ra
 
 # TODO should be updating t0 - the block size - to know when to halt printing spaces
@@ -248,6 +263,7 @@ PrintHeapBlockName:
     li $v0, 11                                          # print char
     syscall
     addi $t1, 1                                         # check next byte for null
+    addi $t0, -1
     lb $a0, ($t1)
     beq $a0, 0, PrintHeapBlockSpace                     # if next byte null, print spaces
     move $a0, $t1
@@ -255,6 +271,16 @@ PrintHeapBlockName:
 
 PrintHeapBlockSpace:
     # TODO complete, using t0 to know when to stop
+    ble $t0, 0, EndBlockPrintIteration
+    li $a0, 0
+    li $v0, 1
+    syscall
+    addi $t0, -1
+    j PrintHeapBlockSpace
+
+EndBlockPrintIteration:
+    move $a0, $t1
+    j PrintHeapAllocatedMemoryBlocks
 
 # TODO if a1 is large, should print first 5, then ..., then last 5
 # a0 is base addr of new mem block, a1 is size of new mem block
@@ -265,7 +291,7 @@ PrintAllocBlock:
     syscall
     addi $t0, 1
     addi $a1, -1
-    bgt $a1, 0, PrintSep
+    bgt $a1, 0, PrintSepA
     la $a0, ClosedBracketStr
     li $v0, 4
     syscall
@@ -274,12 +300,50 @@ PrintAllocBlock:
     syscall
     jr $ra
 
-PrintSep:
+PrintSepA:
     la $a0, sep
     li $v0, 4
     syscall
     move $a0, $t0
     j PrintAllocBlock
+
+PrintArrSetup:
+    la $a0, ArrayStr
+    li $v0, 4
+    syscall
+
+    la $a0, ManagedHeapBP
+    lw $a0, ($a0)
+    la $a1, ManagedHeapNP
+    lw $a1, ($a1)
+    jal PrintArr
+    j main_loop
+
+# a0 is base addr, a1 is final addr
+PrintArr:
+    move $t0, $a0
+    lb $a0, ($a0)
+    li $v0, 1
+    syscall
+    addi $t0, 1
+    blt $t0, $a1, PrintSepB
+    la $a0, newline
+    li $v0, 4
+    syscall
+    jr $ra
+
+PrintSepB:
+    la $a0, sep
+    li $v0, 4
+    syscall
+    move $a0, $t0
+    j PrintArr
+
+HeapEmptyError:
+    la $a0, HeapEmptyErr
+    li $v0, 4
+    syscall
+    j main_loop
 
 HeapOverflowError:
     la $a0, HeapOverflowErr
