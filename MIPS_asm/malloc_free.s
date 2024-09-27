@@ -34,7 +34,7 @@ MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
 NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
 HeapOverflowErr: .asciiz "\nManaged heap is full\n"
-ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, or q.\n"
+ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
 
 newline: .asciiz "\n"
@@ -249,10 +249,12 @@ DisplayHeap:
     j main_loop
 
 # TODO should account for fragmentation, right now its just printing all data up until NP, might mean that last 4 bytes (word) of memory block point to next block (sequentially) - only becomes a problem when we implement block splitting/coalescing
-# FIXME printing extra ", []" - should remove this, even when heap is empty
+# TODO instead of print "[]", print "[ length: 0 ]", need to remove ", " at the end too
 # a0 is managed heap BP, a1 is managed heap NP
 DisplayHeapLoop:
     move $t0, $a0
+    bge $t0, $a1, FinishHeapDisplay
+
     la $a0, OpenBracketStr
     li $v0, 4
     syscall
@@ -313,15 +315,23 @@ FinishBlockDisplay:
     la $a0, ClosedBracketStr
     li $v0, 4
     syscall
+    lb $a0, ($t0)
+
+    # assuming next block is right after, if value is 0, then cannot be mem block
+    # FIXME not reliable, will need refactoring in the future, might require checking next pointer on block
+    bne $a0, 0, PrintBlockSep
+    j FinishHeapDisplay
+
+PrintBlockSep:
     la $a0, sep
     syscall
     move $a0, $t0
     j DisplayHeapLoop
 
 FinishHeapDisplay:
-    la $a0, ClosedBracketStr
-    li $v0, 4
-    syscall
+    # la $a0, ClosedBracketStr
+    # li $v0, 4
+    # syscall
     la $a0, newline
     syscall
     jr $ra
