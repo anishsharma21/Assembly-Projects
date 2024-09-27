@@ -9,7 +9,7 @@
     * [Sieve of Eratosthenes](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/sieve_of_eratosthenes.s)
     * [Linked List](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedlist.s), [Linked Stack](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedstack.s)
         * Memory management of nodes (addresses stored in static-array for reuse)
-    * [malloc/free - Memory Manager](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/malloc_free.s) (in progress)
+    * [Memory Allocator/Deallocator](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/malloc_free.s) (in progress)
         * Dynamic memory allocation/deallocation in a self-managed heap
         * Dynamic resizing of heap, alloc-list, and free-list
         * Block Splitting, Block Coalescing, Defragmentation
