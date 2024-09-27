@@ -28,8 +28,7 @@ ChoiceStr: .asciiz "\nNow, would you like to allocate (a), free (f), or display 
 ChoicePromptStr: .asciiz "\nChoice: "
 OpenBracketStr: .asciiz "["
 ClosedBracketStr: .asciiz "]"
-HeapDisplayedStr: .asciiz "\nHeap displayed above\n"
-ArrayStr: .asciiz "Array: "
+MemoryStr: .asciiz "\nMemory: "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -90,7 +89,7 @@ main_loop:
     lb $a0, ($a0)
     beq $a0, 97, malloc
     # beq $a0, 102, free
-    beq $a0, 100, PrintArrSetup
+    beq $a0, 100, DisplayHeap
     beq $a0, 113, end
 
     la $a0, ChoiceErr
@@ -180,14 +179,6 @@ malloc_main:
 free:
     # TODO implement
 
-DisplayHeap:
-    la $a0, ManagedHeapBP
-    lw $a0, ($a0)
-    la $a1, ManagedHeapNP
-    lw $a1, ($a1)
-    jal PrintHeapAllocatedMemoryBlocks
-    j main_loop
-
 # a0 is new block size
 GetAllocAddr:
     la $t0, FreeListCount
@@ -245,42 +236,95 @@ FindNameLen:
     addi $v0, -1
     jr $ra
 
-# TODO account for empty heap where first call checks if len byte is 0
-# TODO should account for fragmentation, right now its just printing all data up until NP, might mean that last 4 bytes (word) of memory block point to next block (sequentially) - only becomes a problem when we implement block splitting/coalescing
-# TODO open and closed brackets for memory block printing
-# a0 is managed heap BP, a1 is managed heap NP
-PrintHeapAllocatedMemoryBlocks:
-    lb $t0, ($a0)                                       # load in len of first mem block
-    addi $a0, 1
-    addi $t0, -1
-    blt $a0, $a1, PrintHeapBlockName
-    jr $ra
-
-# TODO should be updating t0 - the block size - to know when to halt printing spaces
-PrintHeapBlockName:
-    move $t1, $a0
-    lb $a0, ($a0)
-    li $v0, 11                                          # print char
+DisplayHeap:
+    la $a0, MemoryStr
+    li $v0, 4
     syscall
-    addi $t1, 1                                         # check next byte for null
-    addi $t0, -1
-    lb $a0, ($t1)
-    beq $a0, 0, PrintHeapBlockSpace                     # if next byte null, print spaces
-    move $a0, $t1
-    j PrintHeapBlockName
 
-PrintHeapBlockSpace:
-    # TODO complete, using t0 to know when to stop
-    ble $t0, 0, EndBlockPrintIteration
-    li $a0, 0
+    la $a0, ManagedHeapBP
+    lw $a0, ($a0)
+    la $a1, ManagedHeapNP
+    lw $a1, ($a1)
+    jal DisplayHeapLoop
+    j main_loop
+
+# TODO should account for fragmentation, right now its just printing all data up until NP, might mean that last 4 bytes (word) of memory block point to next block (sequentially) - only becomes a problem when we implement block splitting/coalescing
+# FIXME printing extra ", []" - should remove this, even when heap is empty
+# a0 is managed heap BP, a1 is managed heap NP
+DisplayHeapLoop:
+    move $t0, $a0
+    la $a0, OpenBracketStr
+    li $v0, 4
+    syscall
+
+    # check if BP > NP
+    bge $t0, $a1, FinishHeapDisplay
+
+    # print len inside bracket
+    lb $a0, ($t0)
     li $v0, 1
     syscall
-    addi $t0, -1
+    move $t1, $a0                                       # len of mem block
+    addi $t1, -1                                        # len byte printed, so decr
+
+    la $a0, sep
+    li $v0, 4
+    syscall
+
+    # setup for printing block name
+    addi $t0, 1
+    j PrintHeapBlockName
+
+# TODO prefix with "Name: ", using PrintHeapBlockNameSetup
+# TODO check if I can just print with print_string syscall since string is null terminated
+# t1 contains len of entire mem block
+PrintHeapBlockName:
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+    addi $t1, -1
+    addi $t0, 1
+
+    # check if next val is null (0)
+    lb $a0, ($t0)
+    beq $a0, 0, PrintHeapBlockSpaceSetup
+    j PrintHeapBlockName
+
+# TODO prefix with "Space: "
+PrintHeapBlockSpaceSetup:
+    addi $t0, 1
+    addi $t1, -1
+    blt $t1, 0, FinishBlockDisplay
+    la $a0, sep
+    li $v0, 4
+    syscall
     j PrintHeapBlockSpace
 
-EndBlockPrintIteration:
-    move $a0, $t1
-    j PrintHeapAllocatedMemoryBlocks
+PrintHeapBlockSpace:
+    lb $a0, ($t0)
+    li $v0, 1
+    syscall
+    addi $t1, -1
+    addi $t0, 1
+    ble $t1, 0, FinishBlockDisplay
+    j PrintHeapBlockSpace
+
+FinishBlockDisplay:
+    la $a0, ClosedBracketStr
+    li $v0, 4
+    syscall
+    la $a0, sep
+    syscall
+    move $a0, $t0
+    j DisplayHeapLoop
+
+FinishHeapDisplay:
+    la $a0, ClosedBracketStr
+    li $v0, 4
+    syscall
+    la $a0, newline
+    syscall
+    jr $ra
 
 # TODO if a1 is large, should print first 5, then ..., then last 5
 # a0 is base addr of new mem block, a1 is size of new mem block
@@ -306,38 +350,6 @@ PrintSepA:
     syscall
     move $a0, $t0
     j PrintAllocBlock
-
-PrintArrSetup:
-    la $a0, ArrayStr
-    li $v0, 4
-    syscall
-
-    la $a0, ManagedHeapBP
-    lw $a0, ($a0)
-    la $a1, ManagedHeapNP
-    lw $a1, ($a1)
-    jal PrintArr
-    j main_loop
-
-# a0 is base addr, a1 is final addr
-PrintArr:
-    move $t0, $a0
-    lb $a0, ($a0)
-    li $v0, 1
-    syscall
-    addi $t0, 1
-    blt $t0, $a1, PrintSepB
-    la $a0, newline
-    li $v0, 4
-    syscall
-    jr $ra
-
-PrintSepB:
-    la $a0, sep
-    li $v0, 4
-    syscall
-    move $a0, $t0
-    j PrintArr
 
 HeapEmptyError:
     la $a0, HeapEmptyErr
