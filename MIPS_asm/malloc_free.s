@@ -100,6 +100,7 @@ main_loop:
 
 malloc:
     la $a0, NamePromptStr
+    li $v0, 4
     syscall
 
     la $a0, NameBuffer
@@ -111,9 +112,8 @@ malloc:
     li $v0, 0
     jal FindNameLen
     ble $v0, 0, NameLenError
-
     move $a1, $v0
-    # TODO name must be unique check
+    # TODO check that name is unique
 
     la $a0, SpacePromptStr
     li $v0, 4
@@ -126,7 +126,7 @@ malloc:
     la $a0, NameBuffer
     j malloc_main
 
-# a0 is name buffer, a1 is name len, a2 is space len
+# a0 is name buffer base addr, a1 is name len (accounting for null byte too), a2 is space len
 malloc_main:
     # TODO find block with minimum size requirement rather than first suitable one
     # TODO free list should be sorted by len of each block so binary search can be used
@@ -135,21 +135,29 @@ malloc_main:
     # TODO use binary tree DS for free and malloc list for faster insert/delete of new nodes
 
     # first find total mem block size based on metadata format
-    add $s0, $a1, $a2
-    addi $t0, 2                                         # for len byte at start, and null term of str
-    move $s2, $t0
-    move $a0, $t0
+    li $t0, 0
+    add $t0, $a1, $a2
+    addi $t0, 1                                         # for len byte at start 
+    addi $sp, -4
+    sw $t0, ($sp)
+    move $a0, $t0                                       # a0 block size as arg
     jal GetAllocAddr
-    move $s1, $v0
+    lw $t0, ($sp)
+    addi $sp, 4
+    move $s1, $v0                                       # v0 is returned addr in heap to alloc
 
-    add $t0, $v0, $s0                                   # add returned addr and block size
-    la $t1, ManagedHeapNP
-    sw $t0, ($t1)                                       # store updated managed heap next pointer
+    # update heap next-pointer
+    add $t1, $t0, $v0                                   # add returned addr and block size
+    la $t2, ManagedHeapNP
+    sw $t1, ($t2)                                       # store updated managed heap next pointer
+
+    # begin alloc at return addr
     sb $t0, ($v0)                                       # store len in first byte
     addi $v0, 1
     la $a0, NameBuffer
     move $a1, $v0
     jal StoreName
+    # TODO also store space, cur assuming that additional space mem is default
 
     la $a0, AllocatedBlockStr
     li $v0, 4
@@ -208,7 +216,7 @@ StoreName:
     sb $t0, ($a1)
     addi $a0, 1
     addi $a1, 1
-    bne $t0, 0, StoreName
+    bne $t0, 10, StoreName                              # keep storing until line feed encountered
 
     li $t0, 0                                           # null termination of ascii str
     lb $t0, ($a1)
@@ -223,14 +231,16 @@ FindNameLen:
     bne $t0, 10, FindNameLen
     jr $ra
 
-# a0 is base addr of new mem block, a1 is size
+# TODO subroutine for printing memory space up until next pointer in managed heap
+
+# TODO if a1 is large, should print first 5, then ..., then last 5
+# a0 is base addr of new mem block, a1 is size of new mem block
 PrintAllocBlock:
-    move $s0, $a0
+    move $t0, $a0
     lb $a0, ($a0)
     li $v0, 1
     syscall
-    move $a0, $s0
-    addi $a0, 1
+    addi $t0, 1
     addi $a1, -1
     bge $a1, 0, PrintSep
     la $a0, ClosedBracketStr
@@ -242,11 +252,10 @@ PrintAllocBlock:
     jr $ra
 
 PrintSep:
-    move $s0, $a0
     la $a0, sep
     li $v0, 4
     syscall
-    move $a0, $s0
+    move $a0, $t0
     j PrintAllocBlock
 
 HeapOverflowError:
