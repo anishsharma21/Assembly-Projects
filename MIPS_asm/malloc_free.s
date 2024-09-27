@@ -216,6 +216,7 @@ StoreName:
     sb $t0, ($a1)
     addi $a0, 1
     addi $a1, 1
+    lb $t0, ($a0)                                       # checking next val
     bne $t0, 10, StoreName                              # keep storing until line feed encountered
 
     li $t0, 0                                           # null termination of ascii str
@@ -242,7 +243,7 @@ PrintAllocBlock:
     syscall
     addi $t0, 1
     addi $a1, -1
-    bge $a1, 0, PrintSep
+    bgt $a1, 0, PrintSep
     la $a0, ClosedBracketStr
     li $v0, 4
     syscall
