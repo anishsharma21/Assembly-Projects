@@ -8,12 +8,12 @@ ManagedHeapCap: .word 1024
 .align 2
 MallocListBP: .space 4
 MallocListCount: .byte 0
-MallocListCap: .word 4
+MallocListCap: .byte 4
 
 .align 2
 FreeListBP: .space 4
 FreeListCount: .byte 0
-FreeListCap: .word 4
+FreeListCap: .byte 4
 
 NameBuffer: .space 200
 ChoiceBuffer: .space 4
@@ -36,6 +36,7 @@ NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
 HeapOverflowErr: .asciiz "\nManaged heap is full\n"
 ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
+MallocListOverflowErr: .asciiz "\nManaged malloc list is full\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -157,7 +158,6 @@ malloc_main:
     la $a0, NameBuffer
     move $a1, $v0
     jal StoreName
-    # TODO also store space, cur assuming that additional space mem is default
 
     la $a0, AllocatedBlockStr
     li $v0, 4
@@ -176,8 +176,8 @@ malloc_main:
 
     j main_loop
 
+# TODO implement
 free:
-    # TODO implement
 
 # a0 is new block size
 GetAllocAddr:
@@ -191,6 +191,7 @@ GetAllocAddr:
     # TODO complete this subroutine using free list
     j end
 
+# TODO store addr to block in MallocList
 # a0 is new block size
 ManagedHeapAlloc:
     la $t0, ManagedHeapBP
@@ -210,7 +211,22 @@ ManagedHeapAlloc:
     # TODO instead of err, should dynamically resize heap
     bgt $t3, $t0, HeapOverflowError
 
-    move $v0, $t1
+    # store malloc addr in the malloc list
+    move $s0, $t1
+    la $a0, MallocListBP
+    lw $a0, ($a0)
+    la $a1, MallocListCount
+    lb $a1, ($a1)
+    la $a2, MallocListCap
+    lb $a2, ($a2)
+    move $t0, $a1
+    addi $t0, 1
+    bgt $t0, $a2, MallocListOverflowError
+    sll $a1, $a1, 2
+    add $a0, $a0, $a1
+    sw $t1, ($a0)
+
+    move $v0, $s0
     jr $ra
 
 # a0 is base addr of name buffer, a1 is addr for alloc
@@ -249,7 +265,6 @@ DisplayHeap:
     j main_loop
 
 # TODO should account for fragmentation, right now its just printing all data up until NP, might mean that last 4 bytes (word) of memory block point to next block (sequentially) - only becomes a problem when we implement block splitting/coalescing
-# TODO instead of print "[]", print "[ length: 0 ]", need to remove ", " at the end too
 # a0 is managed heap BP, a1 is managed heap NP
 DisplayHeapLoop:
     move $t0, $a0
@@ -373,6 +388,12 @@ HeapOverflowError:
     syscall
     j end
 
+MallocListOverflowError:
+    la $a0, MallocListOverflowErr
+    li $v0, 4
+    syscall
+    j end
+
 NameLenError:
     la $a0, NameLenErr
     li $v0, 4
@@ -384,7 +405,6 @@ NameNotUniqueError:
     li $v0, 4
     syscall
 
-    # TODO prints malloc list to show options, then jumps to main choices
     j end
 
 end:
