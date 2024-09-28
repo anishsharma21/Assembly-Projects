@@ -179,8 +179,16 @@ malloc_main:
 
     j main_loop
 
-# TODO display block names needs to be a jal procedure call
+# TODO get user choice string and linear search through alloc list
+# FIXME use the malloc list when freeing memory and display variable names, will probably require some sort of recursive procedure approach
 free:
+    # first check if heap is empty
+    la $a0, ManagedHeapBP
+    lw $a0, ($a0)
+    la $a1, ManagedHeapNP
+    lw $a1, ($a1)
+    beq $a0, $a1, HeapEmptyError
+
     la $a0, BlockNamesStr
     li $v0, 4
     syscall
@@ -196,6 +204,7 @@ free:
     syscall
     j main_loop
 
+# TODO use malloc list to get addresses of each memory block rather than relying on presence of length value in next memory block, clearing is no longer needed than either
 DisplayBlockNames:
     move $t0, $a0
     lb $t1, ($t0)
@@ -245,7 +254,6 @@ GetAllocAddr:
     # TODO complete this subroutine using free list
     j end
 
-# TODO store addr to block in MallocList
 # a0 is new block size
 ManagedHeapAlloc:
     la $t0, ManagedHeapBP
@@ -319,6 +327,7 @@ DisplayHeap:
     j main_loop
 
 # TODO should account for fragmentation, right now its just printing all data up until NP, might mean that last 4 bytes (word) of memory block point to next block (sequentially) - only becomes a problem when we implement block splitting/coalescing
+# TODO address above todoitem by just walking through the malloc list and printing values based on that, no need for memory pointer at the end of the block
 # a0 is managed heap BP, a1 is managed heap NP
 DisplayHeapLoop:
     move $t0, $a0
@@ -405,7 +414,6 @@ FinishHeapDisplay:
     syscall
     jr $ra
 
-# TODO if a1 is large, should print first 5, then ..., then last 5
 # a0 is base addr of new mem block, a1 is size of new mem block
 PrintAllocBlock:
     move $t0, $a0
@@ -467,18 +475,3 @@ Return:
 end:
     li $v0, 10
     syscall
-
-#################################################################################################################
-# NOTE we will be using a managed heap for memory allocation of blocks, so no dynamic allocation of memory blocks using sbrk, all variable address pointers are to positions on the heap so that block coalescing and defragmentation can be implemented too
-
-# thinking through my implementation here:
-# - user types in name for variable, then they enter integer for number of bytes of space for it - keeping things super simple to start with
-# - initially, simple sbrk syscall, allocate space, store size meta data too (for now), and the name of the variable itself (which also acts as its value) - memory allocation is a byte for the length of the memory block, followed by ascii encoding of the variable name, and then finally the additional space as specified in bytes
-# - then, returned address is a pointer to this newly allocate memory space - this needs to be stored in a dynamically allocated array (no point in storing it statically because resizing will be necessary - and also, when values arr copied into a separate array when resizing, the previous memory space can be used for other data items too)
-# - then, the user can choose between allocating or freeing from the second step onwards
-# - if the user chooses to free, they are presented with the names of all the variables they can choose to free, then, the user input is matched to one of the variables, if there is no match then the loop repeats for allocation or freeing, otherwise, the memory manager sets the address to free and returns the length of that array too. NOTE these are then kept in a separate array for saved memory spaces - useful for future use
-# - when deallocation occurs, the pointer and length are stored in another memory reuse arr and can then be checked when making future allocations - the logic is to go through this array and find the first pointer to an address with sufficient space
-
-# Future:
-# - Sort the memory reuse arr so that we can use binary search to find the ideal length in O(logn) time
-# - Instead of searching the allocated-list for the names that match the inputted variable name for freeing, we should keep a hash potentially of each value that is stored in a byte
