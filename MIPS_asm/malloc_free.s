@@ -202,6 +202,17 @@ free:
     li $v0, 1
     syscall
 
+    ###
+    la $a0, newline
+    li $v0, 4
+    syscall
+    la $a0, MallocListBP
+    lw $a0, ($a0)
+    la $a1, MallocListCount
+    lb $a1, ($a1)
+    jal PrintMallocList
+    ###
+
     la $a0, BlockNamesStr
     li $v0, 4
     syscall
@@ -375,7 +386,6 @@ DisplayHeapLoop:
     addi $t0, 1
     j PrintHeapBlockName
 
-# TODO prefix with "Name: ", using PrintHeapBlockNameSetup
 # TODO check if I can just print with print_string syscall since string is null terminated
 # t1 contains len of entire mem block
 PrintHeapBlockName:
@@ -460,6 +470,27 @@ PrintSepA:
     syscall
     move $a0, $t0
     j PrintAllocBlock
+
+# a0 is base addr of malloc block, a1 is malloc block count
+PrintMallocList:
+    move $t0, $a0
+    lw $a0, ($a0)
+    li $v0, 1
+    syscall
+    addi $t0, 4
+    addi $a1, -1
+    bgt $a1, 0, PrintSepB
+    la $a0, newline
+    li $v0, 4
+    syscall
+    jr $ra
+
+PrintSepB:
+    la $a0, sep
+    li $v0, 4
+    syscall
+    move $a0, $t0
+    j PrintMallocList
 
 HeapEmptyError:
     la $a0, HeapEmptyErr
