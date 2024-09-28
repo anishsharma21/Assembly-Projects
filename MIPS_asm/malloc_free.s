@@ -76,6 +76,7 @@ main:
     j malloc
 
 main_loop:
+    li $v0, 4
     la $a0, ChoiceStr
     syscall
     la $a0, ChoicePromptStr
@@ -89,7 +90,7 @@ main_loop:
     la $a0, ChoiceBuffer
     lb $a0, ($a0)
     beq $a0, 97, malloc
-    # beq $a0, 102, free
+    beq $a0, 102, free
     beq $a0, 100, DisplayHeap
     beq $a0, 113, end
 
@@ -178,6 +179,39 @@ malloc_main:
 
 # TODO implement
 free:
+    # begin by printing names of variables in memory
+    la $a0, ManagedHeapBP
+    lw $a0, ($a0)
+    la $a1, ManagedHeapNP
+    lw $a1, ($a1)
+    j DisplayBlockNames
+
+# TODO print sep between variable names
+DisplayBlockNames:
+    move $t0, $a0
+    bge $t0, $a1, main_loop
+
+    lb $t1, ($t0)
+    addi $t1, -1
+    addi $t0, 1
+    j PrintNameFree
+
+PrintNameFree:
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+    addi $t1, -1
+    addi $t0, 1
+
+    # check if next val is null (0)
+    lb $a0, ($t0)
+    beq $a0, 0, DisplayNextNameFreeSetup
+    j PrintNameFree
+
+DisplayNextNameFreeSetup:
+    add $t0, $t0, $t1
+    move $a0, $t0
+    j DisplayBlockNames
 
 # a0 is new block size
 GetAllocAddr:
@@ -406,6 +440,9 @@ NameNotUniqueError:
     syscall
 
     j end
+
+Return:
+    jr $ra
 
 end:
     li $v0, 10
