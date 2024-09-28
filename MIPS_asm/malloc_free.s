@@ -19,7 +19,7 @@ NameBuffer: .space 200
 ChoiceBuffer: .space 4
 
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
-NamePromptStr: .asciiz "Pick a name for the variable: "
+NamePromptStr: .asciiz "\nPick a name for the variable: "
 SpacePromptStr: .asciiz "How much space do you want to store: "
 MallocSuccessStr: .asciiz " was allocated at "
 AllocatedBlockStr: .asciiz "\nMemory block allocated: "
@@ -29,6 +29,8 @@ ChoicePromptStr: .asciiz "\nChoice: "
 OpenBracketStr: .asciiz "["
 ClosedBracketStr: .asciiz "]"
 MemoryStr: .asciiz "\nMemory: "
+BlockNamesStr: .asciiz "\nVariable names: "
+BlockNamePromptStr: .asciiz "Variable to free: "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -177,20 +179,25 @@ malloc_main:
 
     j main_loop
 
-# TODO implement
+# TODO display block names needs to be a jal procedure call
 free:
+    la $a0, BlockNamesStr
+    li $v0, 4
+    syscall
     # begin by printing names of variables in memory
     la $a0, ManagedHeapBP
     lw $a0, ($a0)
     la $a1, ManagedHeapNP
     lw $a1, ($a1)
-    j DisplayBlockNames
+    jal DisplayBlockNames
 
-# TODO print sep between variable names
+    la $a0, BlockNamePromptStr
+    li $v0, 4
+    syscall
+    j main_loop
+
 DisplayBlockNames:
     move $t0, $a0
-    bge $t0, $a1, main_loop
-
     lb $t1, ($t0)
     addi $t1, -1
     addi $t0, 1
@@ -210,6 +217,19 @@ PrintNameFree:
 
 DisplayNextNameFreeSetup:
     add $t0, $t0, $t1
+    lb $a0, ($t0)
+
+    # check cur pointer is < heap next pointer
+    blt $t0, $a1, PrintSepFree
+    la $a0, newline
+    li $v0, 4
+    syscall
+    jr $ra
+
+PrintSepFree:
+    la $a0, sep
+    li $v0, 4
+    syscall
     move $a0, $t0
     j DisplayBlockNames
 
