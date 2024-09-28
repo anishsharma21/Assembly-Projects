@@ -28,12 +28,9 @@ ChoiceStr: .asciiz "\nNow, would you like to allocate (a), free (f), or display 
 ChoicePromptStr: .asciiz "\nChoice: "
 OpenBracketStr: .asciiz "["
 ClosedBracketStr: .asciiz "]"
-LengthPrefixStr: .asciiz " Length: "
-SpacePrefixStr: .asciiz "Space: "
-NamePrefixStr: .asciiz "Name: "
 MemoryStr: .asciiz "\nMemory: "
 BlockNamesStr: .asciiz "\nVariable names: "
-BlockNamePromptStr: .asciiz "Variable to free: "
+BlockNamePromptStr: .asciiz "Variable you'd like to free: "
 AllocatedBlockCountStr: .asciiz "\nNumber of variables: "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
@@ -43,6 +40,7 @@ HeapOverflowErr: .asciiz "\nManaged heap is full\n"
 ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
 MallocListOverflowErr: .asciiz "\nManaged malloc list is full\n"
+MallocListCountErr: .asciiz "\nNegative malloc list count encountered."
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -202,17 +200,6 @@ free:
     li $v0, 1
     syscall
 
-    ###
-    la $a0, newline
-    li $v0, 4
-    syscall
-    la $a0, MallocListBP
-    lw $a0, ($a0)
-    la $a1, MallocListCount
-    lb $a1, ($a1)
-    jal PrintMallocList
-    ###
-
     la $a0, BlockNamesStr
     li $v0, 4
     syscall
@@ -224,9 +211,11 @@ free:
     lw $a1, ($a1)
     jal DisplayBlockNames
 
+    # TODO now prompt user for variable name, then check malloc list for var name, handle error gracefully
     la $a0, BlockNamePromptStr
     li $v0, 4
     syscall
+
     j main_loop
 
 # TODO use malloc list to get addresses of each memory block rather than relying on presence of length value in next memory block, clearing is no longer needed than either
@@ -299,9 +288,8 @@ ManagedHeapAlloc:
     bgt $t3, $t0, HeapOverflowError
 
     # store malloc addr in the malloc list
-    move $s0, $t1
     la $a0, MallocListBP
-    lw $a0, ($a0)
+    lw $a0, ($a0)                                       # pointer to pointer
     la $a1, MallocListCount
     move $t2, $a1                                       # malloc list count addr
     lb $a1, ($a1)
@@ -315,8 +303,7 @@ ManagedHeapAlloc:
     sll $a1, $a1, 2
     add $a0, $a0, $a1
     sw $t1, ($a0)
-
-    move $v0, $s0
+    move $v0, $t1
     jr $ra
 
 # a0 is base addr of name buffer, a1 is addr for alloc
@@ -342,72 +329,65 @@ FindNameLen:
     addi $v0, -1
     jr $ra
 
+# SUBSTITUTE PROC - fallback to working version is DisplayHeap1
 DisplayHeap:
-    la $a0, MemoryStr
+    # TODO complete this subroutine - using the malloc list to print the memory blocks in the right format
+    la $a0, MallocListBP
+    lw $a0, ($a0)
+    move $s0, $a0
+    lw $a0, ($a0)                                       # pointer to the actual malloc list arr
+    la $a1, MallocListCount
+    lb $a1, ($a1)
+    li $a2, 0
+
+    # if malloc list count > 0, then display heap, else heap is empty
+    beq $a1, 0, HeapEmptyError
+    blt $a1, 0, MallocListCountError
+    jal DisplayHeapLoop
+
+    la $a0, newline
     li $v0, 4
     syscall
-
-    la $a0, ManagedHeapBP
-    lw $a0, ($a0)
-    la $a1, ManagedHeapNP
-    lw $a1, ($a1)
-    jal DisplayHeapLoop
     j main_loop
 
-# TODO should account for fragmentation, right now its just printing all data up until NP, might mean that last 4 bytes (word) of memory block point to next block (sequentially) - only becomes a problem when we implement block splitting/coalescing
-# TODO address above todoitem by just walking through the malloc list and printing values based on that, no need for memory pointer at the end of the block
-# a0 is managed heap BP, a1 is managed heap NP
+# TODO when first mem block displayed, get the next one from the malloc list arr, requires refactoring, think through it carefully
 DisplayHeapLoop:
     move $t0, $a0
-    bge $t0, $a1, FinishHeapDisplay
+
+    # check if all blocks have been displayed
+    bge $a2, $a1, FinishHeapBlockDisplay
 
     la $a0, OpenBracketStr
     li $v0, 4
     syscall
 
-    # check if BP > NP
-    bge $t0, $a1, FinishHeapDisplay
-
-    # print len inside bracket
+    # save len, print len, decr len
     lb $a0, ($t0)
     li $v0, 1
     syscall
-    move $t1, $a0                                       # len of mem block
-    addi $t1, -1                                        # len byte printed, so decr
+    move $t1, $a0
 
     la $a0, sep
     li $v0, 4
     syscall
 
-    # setup for printing block name
-    la $a0, NamePrefixStr
-    li $v0, 4
-    syscall
+    addi $t1, -1
     addi $t0, 1
     j PrintHeapBlockName
 
-# TODO check if I can just print with print_string syscall since string is null terminated
-# t1 contains len of entire mem block
 PrintHeapBlockName:
     lb $a0, ($t0)
     li $v0, 11
     syscall
     addi $t1, -1
     addi $t0, 1
-
-    # check if next val is null (0)
     lb $a0, ($t0)
-    beq $a0, 0, PrintHeapBlockSpaceSetup
-    j PrintHeapBlockName
-
-PrintHeapBlockSpaceSetup:
+    bne $a0, 0, PrintHeapBlockName
     addi $t0, 1
     addi $t1, -1
-    blt $t1, 0, FinishBlockDisplay
+    ble $t1, 0, FinishHeapBlockDisplay
     la $a0, sep
     li $v0, 4
-    syscall
-    la $a0, SpacePrefixStr
     syscall
     j PrintHeapBlockSpace
 
@@ -415,36 +395,20 @@ PrintHeapBlockSpace:
     lb $a0, ($t0)
     li $v0, 1
     syscall
-    addi $t1, -1
     addi $t0, 1
-    ble $t1, 0, FinishBlockDisplay
+    addi $t1, -1
+    ble $t1, 0, FinishHeapBlockDisplay
     j PrintHeapBlockSpace
 
-FinishBlockDisplay:
-    la $a0, space
+FinishHeapBlockDisplay:
+    la $a0, ClosedBracketStr
     li $v0, 4
     syscall
-    la $a0, ClosedBracketStr
-    syscall
-    lb $a0, ($t0)
 
-    # assuming next block is right after, if value is 0, then cannot be mem block
-    # FIXME not reliable, will need refactoring in the future, might require checking next pointer on block
-    bne $a0, 0, PrintBlockSep
-    j FinishHeapDisplay
-
-PrintBlockSep:
-    la $a0, sep
-    syscall
-    move $a0, $t0
-    j DisplayHeapLoop
-
-FinishHeapDisplay:
-    # la $a0, ClosedBracketStr
-    # li $v0, 4
-    # syscall
-    la $a0, newline
-    syscall
+    addi $a2, 1
+    addi $s0, 4
+    lw $a0, ($s0)
+    blt $a2, $a1, DisplayHeapLoop
     jr $ra
 
 # a0 is base addr of new mem block, a1 is size of new mem block
@@ -497,6 +461,12 @@ HeapEmptyError:
     li $v0, 4
     syscall
     j main_loop
+
+MallocListCountError:
+    la $a0, MallocListCountErr
+    li $v0, 4
+    syscall
+    j end
 
 HeapOverflowError:
     la $a0, HeapOverflowErr
