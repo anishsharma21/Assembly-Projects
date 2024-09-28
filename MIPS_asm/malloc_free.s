@@ -219,42 +219,45 @@ free:
     j main_loop
 
 # TODO use malloc list to get addresses of each memory block rather than relying on presence of length value in next memory block, clearing is no longer needed than either
+# TODO can probably replace a0 with t0 here throughout, only use it as arg for syscalls
 DisplayBlockNames:
+    la $a0, MallocListBP
+    lw $a0, ($a0)                                       # pointer to malloc list arr
+    move $s0, $a0
+    lw $a0, ($a0)                                       # pointer to first addr in malloc list arr
+    addi $a0, 1                                         # skip len byte
+    la $a1, MallocListCount
+    lb $a1, ($a1)
+    ble $a1, 0, HeapEmptyError
     move $t0, $a0
-    lb $t1, ($t0)
-    addi $t1, -1
-    addi $t0, 1
-    j PrintNameFree
+    j DisplayBlockNameLoop
 
-PrintNameFree:
+DisplayBlockNameLoop:
     lb $a0, ($t0)
     li $v0, 11
     syscall
-    addi $t1, -1
     addi $t0, 1
-
-    # check if next val is null (0)
     lb $a0, ($t0)
-    beq $a0, 0, DisplayNextNameFreeSetup
-    j PrintNameFree
+    beq $a0, 0, NextBlockName
+    j DisplayBlockNameLoop
 
-DisplayNextNameFreeSetup:
-    add $t0, $t0, $t1
-    lb $a0, ($t0)
-
-    # check cur pointer is < heap next pointer
-    blt $t0, $a1, PrintSepFree
-    la $a0, newline
-    li $v0, 4
-    syscall
-    jr $ra
-
-PrintSepFree:
+NextBlockName:
+    addi $a1, -1
+    ble $a1, 0, FinishDisplayBlockNames
     la $a0, sep
     li $v0, 4
     syscall
-    move $a0, $t0
-    j DisplayBlockNames
+    addi $s0, 4
+    lw $t0, ($s0)
+    addi $t0, 1                                         # skip len byte
+    j DisplayBlockNameLoop
+
+FinishDisplayBlockNames:
+    la $a0, newline
+    li $v0, 4
+    syscall
+    syscall
+    jr $ra
 
 # a0 is new block size
 GetAllocAddr:
@@ -329,7 +332,6 @@ FindNameLen:
     addi $v0, -1
     jr $ra
 
-# SUBSTITUTE PROC - fallback to working version is DisplayHeap1
 DisplayHeap:
     # TODO complete this subroutine - using the malloc list to print the memory blocks in the right format
     la $a0, MallocListBP
