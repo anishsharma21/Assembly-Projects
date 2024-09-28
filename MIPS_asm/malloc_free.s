@@ -28,9 +28,13 @@ ChoiceStr: .asciiz "\nNow, would you like to allocate (a), free (f), or display 
 ChoicePromptStr: .asciiz "\nChoice: "
 OpenBracketStr: .asciiz "["
 ClosedBracketStr: .asciiz "]"
+LengthPrefixStr: .asciiz " Length: "
+SpacePrefixStr: .asciiz "Space: "
+NamePrefixStr: .asciiz "Name: "
 MemoryStr: .asciiz "\nMemory: "
 BlockNamesStr: .asciiz "\nVariable names: "
 BlockNamePromptStr: .asciiz "Variable to free: "
+AllocatedBlockCountStr: .asciiz "\nNumber of variables: "
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -42,6 +46,7 @@ MallocListOverflowErr: .asciiz "\nManaged malloc list is full\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
+space: .asciiz " "
 
 .text
 .globl main
@@ -189,9 +194,18 @@ free:
     lw $a1, ($a1)
     beq $a0, $a1, HeapEmptyError
 
+    la $a0, AllocatedBlockCountStr
+    li $v0, 4
+    syscall
+    la $a0, MallocListCount
+    lb $a0, ($a0)
+    li $v0, 1
+    syscall
+
     la $a0, BlockNamesStr
     li $v0, 4
     syscall
+
     # begin by printing names of variables in memory
     la $a0, ManagedHeapBP
     lw $a0, ($a0)
@@ -278,11 +292,14 @@ ManagedHeapAlloc:
     la $a0, MallocListBP
     lw $a0, ($a0)
     la $a1, MallocListCount
+    move $t2, $a1                                       # malloc list count addr
     lb $a1, ($a1)
     la $a2, MallocListCap
     lb $a2, ($a2)
+
     move $t0, $a1
     addi $t0, 1
+    sb $t0, ($t2)
     bgt $t0, $a2, MallocListOverflowError
     sll $a1, $a1, 2
     add $a0, $a0, $a1
@@ -352,6 +369,9 @@ DisplayHeapLoop:
     syscall
 
     # setup for printing block name
+    la $a0, NamePrefixStr
+    li $v0, 4
+    syscall
     addi $t0, 1
     j PrintHeapBlockName
 
@@ -370,13 +390,14 @@ PrintHeapBlockName:
     beq $a0, 0, PrintHeapBlockSpaceSetup
     j PrintHeapBlockName
 
-# TODO prefix with "Space: "
 PrintHeapBlockSpaceSetup:
     addi $t0, 1
     addi $t1, -1
     blt $t1, 0, FinishBlockDisplay
     la $a0, sep
     li $v0, 4
+    syscall
+    la $a0, SpacePrefixStr
     syscall
     j PrintHeapBlockSpace
 
@@ -390,8 +411,10 @@ PrintHeapBlockSpace:
     j PrintHeapBlockSpace
 
 FinishBlockDisplay:
-    la $a0, ClosedBracketStr
+    la $a0, space
     li $v0, 4
+    syscall
+    la $a0, ClosedBracketStr
     syscall
     lb $a0, ($t0)
 
@@ -468,9 +491,6 @@ NameNotUniqueError:
     syscall
 
     j end
-
-Return:
-    jr $ra
 
 end:
     li $v0, 10
