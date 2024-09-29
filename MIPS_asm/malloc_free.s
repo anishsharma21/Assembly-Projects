@@ -33,6 +33,7 @@ MemoryStr: .asciiz "\nMemory: "
 BlockNamesStr: .asciiz "\nVariable names: "
 BlockNamePromptStr: .asciiz "Variable you'd like to free: "
 AllocatedBlockCountStr: .asciiz "\nNumber of variables: "
+FreeListAllocAddr: .asciiz "\n ### Reusing a freed block ###\n"
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -181,6 +182,7 @@ malloc_main:
 
     j main_loop
 
+# FIXME BIG issue - free and malloc lists will end up with holes when alloc/dealloc occurs and offset from base won't work when loading or storing values - the entire list needs to be adjusted so that addresses after the alloc/dealloc addr need to be moved 1 down to fill the space and to ensure the offset still works
 free:
     # first check if heap is empty
     la $a0, ManagedHeapBP
@@ -273,6 +275,7 @@ HandleLF:
 FoundName:
     # remove addr from malloc list and update malloc list count
     li $t0, 0
+    # FIXME this is bad - cant clear this because program goes through malloc and free list linearly for addr
     sw $t0, ($a2)                                       # clear mem addr
     la $a0, MallocListCount
     lb $t0, ($a0)
@@ -339,10 +342,16 @@ GetAllocAddr:
     lb $t0, ($t0)
     beq $t0, 0, ManagedHeapAlloc
 
-    la $t0, FreeListBP
-    lw $t0, ($t0)
+    la $t1, FreeListBP
+    lw $t1, ($t1)
+    lw $t1, ($t1)                                       # pointer to first addr in free list
+    j SearchFreeList
 
-    # TODO complete this subroutine using free list
+# TODO not complete
+SearchFreeList:
+    lb $a0, ($t1)
+    li $v0, 1
+    syscall
     j end
 
 # a0 is new block size
