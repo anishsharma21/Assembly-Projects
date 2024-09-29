@@ -17,6 +17,7 @@ FreeListCap: .byte 4
 
 NameBuffer: .space 200
 ChoiceBuffer: .space 4
+UserFreeInputStr: .space 200
 
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
 NamePromptStr: .asciiz "\nPick a name for the variable: "
@@ -41,6 +42,7 @@ ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
 MallocListOverflowErr: .asciiz "\nManaged malloc list is full\n"
 MallocListCountErr: .asciiz "\nNegative malloc list count encountered."
+NameNotFoundErr: .asciiz "\nName not found.\nTry again.\n\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -109,6 +111,7 @@ malloc:
     li $v0, 4
     syscall
 
+    # TODO cannot call name q
     la $a0, NameBuffer
     la $a1, 200                                         # large enough buffer for long names (up to 50 char)
     li $v0, 8
@@ -182,8 +185,6 @@ malloc_main:
 
     j main_loop
 
-# TODO get user choice string and linear search through alloc list
-# FIXME use the malloc list when freeing memory and display variable names, will probably require some sort of recursive procedure approach
 free:
     # first check if heap is empty
     la $a0, ManagedHeapBP
@@ -211,14 +212,73 @@ free:
     lw $a1, ($a1)
     jal DisplayBlockNames
 
-    # TODO now prompt user for variable name, then check malloc list for var name, handle error gracefully
-    la $a0, BlockNamePromptStr
-    li $v0, 4
+    jal FindNameMallocList
+
+    ####
+    move $a0, $v0
+    lw $a0, ($a0)
+    lb $a0, ($a0)
+    li $v0, 1
     syscall
+    ####
 
     j main_loop
 
-# TODO use malloc list to get addresses of each memory block rather than relying on presence of length value in next memory block, clearing is no longer needed than either
+# no args, returns addr to malloc list mem block to free in v0
+FindNameMallocList:
+    la $a0, BlockNamePromptStr
+    li $v0, 4
+    syscall
+    la $a0, UserFreeInputStr
+    li $a1, 200
+    li $v0, 8
+    syscall
+    la $a0, UserFreeInputStr
+    lb $a0, ($a0)
+    beq $a0, 113, main_loop
+
+    la $a1, UserFreeInputStr
+    la $a2, MallocListBP
+    lw $a2, ($a2)                                       # points to first addr in arr
+    la $a3, MallocListCount
+    lb $a3, ($a3)                                       # mutable, decr each addr covered
+    j SearchNameMallocList
+
+SearchNameMallocList:
+    move $t0, $a1                                       # bp to user free input (immutable)
+    lw $t1, ($a2)                                       # addr in malloc list arr at a2 (mutable)
+    addi $t1, 1                                         # skip len byte
+    j CompareName
+
+CompareName:
+    lb $t3, ($t0)                                       # char from user input buffer
+    lb $t2, ($t1)                                       # char from malloc
+    addi $t0, 1
+    addi $t1, 1
+    beq $t3, 10, HandleLF                               # either LF found in user input (not null terminated)
+    beq $t2, 0, NameNotFoundNextIter                    # or null byte in name
+    j CompareName
+
+HandleLF:
+    beq $t2, 0, FoundNameReturnBP
+    j NameNotFoundNextIter
+
+FoundNameReturnBP:
+    move $v0, $a2
+    jr $ra
+
+NameNotFoundNextIter:
+    addi $a3, -1
+    beq $a3, 0, NameNotFound
+    addi $a2, 4
+    j SearchNameMallocList
+
+NameNotFound:
+    la $a0, NameNotFoundErr
+    li $v0, 4
+    syscall
+    j FindNameMallocList
+
 # TODO can probably replace a0 with t0 here throughout, only use it as arg for syscalls
 DisplayBlockNames:
     la $a0, MallocListBP
