@@ -157,11 +157,6 @@ malloc_main:
     addi $sp, 4
     move $s1, $v0                                       # v0 is returned addr in heap to alloc
 
-    # update heap next-pointer
-    add $t1, $t0, $v0                                   # add returned addr and block size
-    la $t2, ManagedHeapNP
-    sw $t1, ($t2)                                       # store updated managed heap next pointer
-
     # begin alloc at return addr
     sb $t0, ($v0)                                       # store len in first byte
     addi $v0, 1
@@ -355,6 +350,7 @@ ManagedHeapAlloc:
     la $t0, ManagedHeapBP
     lw $t0, ($t0)
     la $t1, ManagedHeapNP
+    move $s0, $t1
     lw $t1, ($t1)
     la $t2, ManagedHeapCap
     lw $t2, ($t2)
@@ -368,6 +364,10 @@ ManagedHeapAlloc:
 
     # TODO instead of err, should dynamically resize heap
     bgt $t3, $t0, HeapOverflowError
+
+    # update np
+    addi $t3, -1
+    sw $t3, ($s0)
 
     # store malloc addr in the malloc list
     la $a0, MallocListBP
