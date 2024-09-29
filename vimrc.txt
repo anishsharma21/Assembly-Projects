@@ -22,3 +22,7 @@ set background=dark
 set title
 set nocompatible
 set showcmd
+
+" REMAPS "
+
+nnoremap <Space> '

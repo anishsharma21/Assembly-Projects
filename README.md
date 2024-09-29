@@ -18,6 +18,7 @@
     * [Linked List](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedlist.s), [Linked Stack](https://github.com/anishsharma21/EarlyLangs/blob/main/MIPS_asm/linkedstack.s)
         * Memory management of nodes (addresses stored in static-array for reuse)
 * Text editor of choice: ![Vim](https://img.shields.io/badge/-Vim-333333?style=flat&logo=vim)&nbsp;
+        * [.vimrc file content](https://github.com/anishsharma21/Assembly-Projects/blob/main/vimrc.txt)
 
 ## Introduction
 
