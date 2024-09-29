@@ -5,6 +5,7 @@ ManagedHeapBP: .space 4
 ManagedHeapNP: .space 4
 ManagedHeapCap: .word 1024
 
+# FIXME malloc and free list need to use linked list data structure with head and tail node pointers - to resolve the bug with array offsets being unreliable when addressed become unused
 .align 2
 MallocListBP: .space 4
 MallocListCount: .byte 0
@@ -421,7 +422,6 @@ FindNameLen:
     jr $ra
 
 DisplayHeap:
-    # TODO complete this subroutine - using the malloc list to print the memory blocks in the right format
     la $a0, MallocListBP
     lw $a0, ($a0)
     move $s0, $a0
@@ -440,7 +440,6 @@ DisplayHeap:
     syscall
     j main_loop
 
-# TODO when first mem block displayed, get the next one from the malloc list arr, requires refactoring, think through it carefully
 DisplayHeapLoop:
     move $t0, $a0
 
