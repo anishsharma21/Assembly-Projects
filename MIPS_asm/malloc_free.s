@@ -41,6 +41,7 @@ HeapOverflowErr: .asciiz "\nManaged heap is full\n"
 ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
 MallocListOverflowErr: .asciiz "\nManaged malloc list is full\n"
+FreeListOverflowErr: .asciiz "\nManaged free list is full\n"
 MallocListCountErr: .asciiz "\nNegative malloc list count encountered."
 NameNotFoundErr: .asciiz "\nName not found.\nTry again.\n\n"
 
@@ -212,15 +213,25 @@ free:
     lw $a1, ($a1)
     jal DisplayBlockNames
 
+    # v0 will contain bp addr to mem block to free
     jal FindNameMallocList
+    move $a1, $v0
 
-    ####
-    move $a0, $v0
-    lw $a0, ($a0)
-    lb $a0, ($a0)
-    li $v0, 1
-    syscall
-    ####
+    # place freed mem addr in free list and update free list count
+    la $t0, FreeListBP
+    lw $t0, ($t0)
+    la $t1, FreeListCount
+    move $t2, $t1
+    lb $t1, ($t1)
+    la $t4, FreeListCap
+    lb $t4, ($t4)
+    move $t3, $t1
+    addi $t3, 1
+    bge $t3, $t4, FreeListOverflowError
+    sll $t1, $t1, 2
+    add $t0, $t0, $t1
+    sw $a1, ($t0)
+    sb $t3, ($t2)
 
     j main_loop
 
@@ -261,10 +272,17 @@ CompareName:
     j CompareName
 
 HandleLF:
-    beq $t2, 0, FoundNameReturnBP
+    beq $t2, 0, FoundName
     j NameNotFoundNextIter
 
-FoundNameReturnBP:
+FoundName:
+    # remove addr from malloc list and update malloc list count
+    li $t0, 0
+    sw $t0, ($a2)                                       # clear mem addr
+    la $a0, MallocListCount
+    lb $t0, ($a0)
+    addi $t0, -1
+    sb $t0, ($a0)
     move $v0, $a2
     jr $ra
 
@@ -539,6 +557,12 @@ HeapOverflowError:
 
 MallocListOverflowError:
     la $a0, MallocListOverflowErr
+    li $v0, 4
+    syscall
+    j end
+
+FreeListOverflowError:
+    la $a0, FreeListOverflowErr
     li $v0, 4
     syscall
     j end
