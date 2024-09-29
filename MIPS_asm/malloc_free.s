@@ -257,6 +257,7 @@ CompareName:
     addi $t1, 1
     beq $t3, 10, HandleLF                               # either LF found in user input (not null terminated)
     beq $t2, 0, NameNotFoundNextIter                    # or null byte in name
+    bne $t2, $t3, NameNotFoundNextIter
     j CompareName
 
 HandleLF:
