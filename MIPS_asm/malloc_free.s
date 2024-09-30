@@ -144,7 +144,7 @@ malloc_main:
     # TODO use binary tree DS for free and malloc list for faster insert/delete of new nodes
 
     # first find total mem block size based on metadata format
-    li $t0, 0
+    # TODO no need to put temp register values on the stack, change to s0
     add $t0, $a1, $a2
     addi $t0, 1                                         # for len byte at start 
     addi $sp, -4
@@ -371,20 +371,20 @@ ManagedHeapAlloc:
     # TODO instead of err, should dynamically resize heap
     bgt $t3, $t0, HeapOverflowError
 
-    # update np
-    addi $t3, -1
+    # store updated np (given no heap overflow)
+    addi $t3, 1
     sw $t3, ($s0)
 
     # check if malloc list is empty, if it is, set head and tail node
-    la $a0, MallocListCount
-    lb $a0, ($a1)
-    beq $a0, 0, SetFirstMallocNode
-
+    la $t0, MallocListCount
+    lb $t0, ($a1)
+    move $a0, $t1
+    beq $t0, 0, SetFirstMallocNode
     # otherwise only create new tail node with cur and next pointer
-    la $a0, MallocListTailPointer
-    lw $a0, ($a0)
-    # TODO complete
+    move $a1, $t1
+    j NewMallocTailNode
 
+# a0 is mem block pointer
 SetFirstMallocNode:
     # check free list for reusable nodes first
     la $t0, FreeListCount
@@ -392,6 +392,28 @@ SetFirstMallocNode:
     bgt $t0, 0, SetFirstMallocNodeFromFreeList
 
     # allocate new space for the head and tail pointer (same pointer for first node)
+    la $a0, 8
+    li $v0, 9
+    syscall
+
+    # set first 4 bytes for cur addr
+    sw $a0, ($v0)
+    # set next 4 bytes for next addr (which is same because head and tail node same for first node)
+    sw $a0, 4($v0)
+
+    # return mem block pointer for storing data
+    move $v0, $a0
+    jr $ra
+
+# a1 is mem block pointer
+NewMallocTailNode:
+    # create new tail node
+    la $a0, 8
+    li $v0, 9
+    syscall
+    # TODO complete
+    la $t0, MallocListTailPointer
+    lw $t1, ($t0)
 
 # a0 is base addr of name buffer, a1 is addr for alloc
 StoreName:
