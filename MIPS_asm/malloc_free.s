@@ -1,17 +1,27 @@
 .data
 
+# heap space for memory blocks - where variable data is stored
 .align 2
 ManagedHeapBP: .space 4
 ManagedHeapNP: .space 4
 ManagedHeapCap: .word 1024
 
 # FIXME malloc and free list need to use linked list data structure with head and tail node pointers - to resolve the bug with array offsets being unreliable when addressed become unused
+
+# malloc/allocation list - linked list data structure used to track details about allocated nodes in the managed heap
 .align 2
+MallocListHeadPointer: .space 4
+.align 2
+MallocListTailPointer: .space 4
 MallocListBP: .space 4
 MallocListCount: .byte 0
 MallocListCap: .byte 4
 
+# free list - linked list data structure used to track details about deallocated/freed nodes
 .align 2
+FreeListHeadPointer: .space 4
+.align 2
+FreeListTailPointer: .space 4
 FreeListBP: .space 4
 FreeListCount: .byte 0
 FreeListCap: .byte 4
@@ -63,20 +73,6 @@ main:
     la $a0, ManagedHeapBP                               # base pointer for managed heap
     sw $v0, ($a0)
     la $a0, ManagedHeapNP                               # next pointer for managed heap
-    sw $v0, ($a0)
-
-    # allocate mem for malloc-list
-    li $a0, 16                                          # space for 4 malloc addresses
-    li $v0, 9
-    syscall
-    la $a0, MallocListBP
-    sw $v0, ($a0)
-
-    # allocate mem for free-list
-    li $a0, 16                                          # space for 4 free addresses
-    li $v0, 9
-    syscall
-    la $a0, FreeListBP
     sw $v0, ($a0)
 
     la $a0, IntroStr
@@ -276,7 +272,6 @@ HandleLF:
 FoundName:
     # remove addr from malloc list and update malloc list count
     li $t0, 0
-    # FIXME this is bad - cant clear this because program goes through malloc and free list linearly for addr
     sw $t0, ($a2)                                       # clear mem addr
     la $a0, MallocListCount
     lb $t0, ($a0)
@@ -357,6 +352,7 @@ SearchFreeList:
 
 # a0 is new block size
 ManagedHeapAlloc:
+    # first check there is enough space in the heap
     la $t0, ManagedHeapBP
     lw $t0, ($t0)
     la $t1, ManagedHeapNP
@@ -370,7 +366,7 @@ ManagedHeapAlloc:
 
     # addr for last byte in managed heap if allocated
     add $t3, $t1, $a0
-    addi $t3, -1                                        # 0 based idxing
+    addi $t3, -1
 
     # TODO instead of err, should dynamically resize heap
     bgt $t3, $t0, HeapOverflowError
@@ -379,24 +375,23 @@ ManagedHeapAlloc:
     addi $t3, -1
     sw $t3, ($s0)
 
-    # store malloc addr in the malloc list
-    la $a0, MallocListBP
-    lw $a0, ($a0)                                       # pointer to pointer
-    la $a1, MallocListCount
-    move $t2, $a1                                       # malloc list count addr
-    lb $a1, ($a1)
-    la $a2, MallocListCap
-    lb $a2, ($a2)
+    # check if malloc list is empty, if it is, set head and tail node
+    la $a0, MallocListCount
+    lb $a0, ($a1)
+    beq $a0, 0, SetFirstMallocNode
 
-    move $t0, $a1
-    addi $t0, 1
-    sb $t0, ($t2)
-    bgt $t0, $a2, MallocListOverflowError
-    sll $a1, $a1, 2
-    add $a0, $a0, $a1
-    sw $t1, ($a0)
-    move $v0, $t1
-    jr $ra
+    # otherwise only create new tail node with cur and next pointer
+    la $a0, MallocListTailPointer
+    lw $a0, ($a0)
+    # TODO complete
+
+SetFirstMallocNode:
+    # check free list for reusable nodes first
+    la $t0, FreeListCount
+    lb $t0, ($t0)
+    bgt $t0, 0, SetFirstMallocNodeFromFreeList
+
+    # allocate new space for the head and tail pointer (same pointer for first node)
 
 # a0 is base addr of name buffer, a1 is addr for alloc
 StoreName:
