@@ -64,24 +64,30 @@ space: .asciiz " "
 .text
 .globl main
 .globl malloc
+.globl free
 
 main:
     # allocate mem for managed heap
     li $a0, 1024                                        # 1024 bytes of space in managed heap
     li $v0, 9
     syscall
-    la $a0, ManagedHeapBP                               # base pointer for managed heap
+
+    # store base pointer of heap
+    la $a0, ManagedHeapBP
     sw $v0, ($a0)
-    la $a0, ManagedHeapNP                               # next pointer for managed heap
+
+    # store next pointer of heap (same as base pointer initially)
+    la $a0, ManagedHeapNP
     sw $v0, ($a0)
 
     la $a0, IntroStr
     li $v0, 4
     syscall
 
+    # initiate memory allocation flow immediately
     j malloc
 
-main_loop:
+MainLoop:
     li $v0, 4
     la $a0, ChoiceStr
     syscall
@@ -103,27 +109,30 @@ main_loop:
     la $a0, ChoiceErr
     li $v0, 4
     syscall
-    j main_loop
+    j MainLoop
 
 malloc:
+    # prompt user for name of new memory block / variable
     la $a0, NamePromptStr
     li $v0, 4
     syscall
 
-    # TODO cannot call name q
+    # TODO cannot call name q, this will quit flow
     la $a0, NameBuffer
     la $a1, 200                                         # large enough buffer for long names (up to 50 char)
     li $v0, 8
     syscall
 
+    # TODO check name is unique
+    # check that name is unique and length > 0
     la $a0, NameBuffer
     li $v0, 0
     jal FindNameLen
     ble $v0, 0, NameLenError
     move $a1, $v0
     addi $a1, 1
-    # TODO check that name is unique
 
+    # prompt user for additional memory space to store in memory block / variable
     la $a0, SpacePromptStr
     li $v0, 4
     syscall
@@ -132,11 +141,12 @@ malloc:
     syscall
     move $a2, $v0
 
+    # proceed to main subroutine of malloc implementation
     la $a0, NameBuffer
-    j malloc_main
+    j MallocMain
 
 # a0 is name buffer base addr, a1 is name len (accounting for null byte too), a2 is space len
-malloc_main:
+MallocMain:
     # TODO find block with minimum size requirement rather than first suitable one
     # TODO free list should be sorted by len of each block so binary search can be used
     # TODO binary search to find block with enough space
@@ -144,31 +154,39 @@ malloc_main:
     # TODO use binary tree DS for free and malloc list for faster insert/delete of new nodes
 
     # first find total mem block size based on metadata format
-    # TODO no need to put temp register values on the stack, change to s0
-    add $t0, $a1, $a2
-    addi $t0, 1                                         # for len byte at start 
+    add $s0, $a1, $a2
+    addi $s0, 1                                         # for len byte at start 
+
+    # push mem block size value on the stack
     addi $sp, -4
-    sw $t0, ($sp)
-    move $a0, $t0                                       # a0 block size as arg
+    sw $s0, ($sp)
+
+    # get base addr of mem block to begin allocating memory, store it in s1
+    move $a0, $s0
     jal GetAllocAddr
-    lw $t0, ($sp)
-    addi $sp, 4
     move $s1, $v0                                       # v0 is returned addr in heap to alloc
 
-    # begin alloc at return addr
-    sb $t0, ($v0)                                       # store len in first byte
+    # pop mem block size value off the stack
+    lw $s0, ($sp)
+    addi $sp, 4
+
+    # store len of memory block in first byte
+    sb $s0, ($v0)
     addi $v0, 1
+
+    # store name of memory block at incremented addr
     la $a0, NameBuffer
     move $a1, $v0
     jal StoreName
 
+    # print formatted memory block
     la $a0, AllocatedBlockStr
     li $v0, 4
     syscall
-
     la $a0, OpenBracketStr
-    li $v0, 4
     syscall
+
+    # a0 base addr of mem block, a1 size of mem block (from len byte)
     move $a0, $s1
     lb $a1, ($a0)
     jal PrintAllocBlock
@@ -177,7 +195,7 @@ malloc_main:
     li $v0, 4
     syscall
 
-    j main_loop
+    j MainLoop
 
 # FIXME BIG issue - free and malloc lists will end up with holes when alloc/dealloc occurs and offset from base won't work when loading or storing values - the entire list needs to be adjusted so that addresses after the alloc/dealloc addr need to be moved 1 down to fill the space and to ensure the offset still works
 free:
@@ -227,7 +245,7 @@ free:
     sw $a1, ($t0)
     sb $t3, ($t2)
 
-    j main_loop
+    j MainLoop
 
 # no args, returns addr to malloc list mem block to free in v0
 FindNameMallocList:
@@ -240,7 +258,7 @@ FindNameMallocList:
     syscall
     la $a0, UserFreeInputStr
     lb $a0, ($a0)
-    beq $a0, 113, main_loop
+    beq $a0, 113, MainLoop
 
     la $a1, UserFreeInputStr
     la $a2, MallocListBP
@@ -375,45 +393,50 @@ ManagedHeapAlloc:
     addi $t3, 1
     sw $t3, ($s0)
 
-    # check if malloc list is empty, if it is, set head and tail node
-    la $t0, MallocListCount
-    lb $t0, ($a1)
-    move $a0, $t1
-    beq $t0, 0, SetFirstMallocNode
-    # otherwise only create new tail node with cur and next pointer
-    move $a1, $t1
-    j NewMallocTailNode
-
-# a0 is mem block pointer
-SetFirstMallocNode:
-    # check free list for reusable nodes first
-    la $t0, FreeListCount
-    lb $t0, ($t0)
-    bgt $t0, 0, SetFirstMallocNodeFromFreeList
-
-    # allocate new space for the head and tail pointer (same pointer for first node)
+    # create new node to track mem block
     la $a0, 8
     li $v0, 9
     syscall
+    move $a1, $a0
 
-    # set first 4 bytes for cur addr
-    sw $a0, ($v0)
-    # set next 4 bytes for next addr (which is same because head and tail node same for first node)
-    sw $a0, 4($v0)
+    # check if malloc list is empty, if it is, set head and tail node, else new tail node
+    la $t0, MallocListCount
+    lb $t0, ($a1)
+    move $a0, $t1
+    beq $t0, 0, CreateFirstMallocNode
+    move $a1, $t1
+    j CreateMallocTailNode
+
+# a0 is mem block pointer, a1 is node pointer
+CreateFirstMallocNode:
+    # set first 4 bytes for cur addr of mem block
+    sw $a0, ($a1)
+
+    # set next 4 bytes for next node addr (which is same because head and tail node same for first node)
+    sw $a0, 4($a1)
 
     # return mem block pointer for storing data
     move $v0, $a0
     jr $ra
 
-# a1 is mem block pointer
-NewMallocTailNode:
-    # create new tail node
-    la $a0, 8
-    li $v0, 9
-    syscall
-    # TODO complete
+# a1 is node pointer, a2 is mem block pointer
+CreateMallocTailNode:
+    # get address to tail node
     la $t0, MallocListTailPointer
     lw $t1, ($t0)
+
+    # set mem block pointer in new node
+    sw $a2, 0($a1)
+
+    # set next pointer in prev tail node to new node pointer
+    sw $a1, 4($t1)
+
+    # set global tail node pointer to new node
+    sw $a1, ($t0)
+
+    # return mem block pointer for storing data
+    move $v0, $a2
+    jr $ra
 
 # a0 is base addr of name buffer, a1 is addr for alloc
 StoreName:
@@ -455,7 +478,7 @@ DisplayHeap:
     la $a0, newline
     li $v0, 4
     syscall
-    j main_loop
+    j MainLoop
 
 DisplayHeapLoop:
     move $t0, $a0
@@ -566,7 +589,7 @@ HeapEmptyError:
     la $a0, HeapEmptyErr
     li $v0, 4
     syscall
-    j main_loop
+    j MainLoop
 
 MallocListCountError:
     la $a0, MallocListCountErr
@@ -596,7 +619,7 @@ NameLenError:
     la $a0, NameLenErr
     li $v0, 4
     syscall
-    j main_loop
+    j MainLoop
 
 NameNotUniqueError:
     la $a0, NameNotUniqueErr
