@@ -397,7 +397,7 @@ ManagedHeapAlloc:
     la $a0, 8
     li $v0, 9
     syscall
-    move $a1, $a0
+    move $a1, $v0
 
     # check if malloc list is empty, if it is, set head and tail node, else new tail node
     la $t0, MallocListCount
