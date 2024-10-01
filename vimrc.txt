@@ -25,4 +25,14 @@ set showcmd
 
 " REMAPS "
 
+" File and Vim management
 nnoremap <Space> '
+nnoremap ;e :e 
+nnoremap ;m :marks<CR>
+nnoremap ;ev :e ~/.vimrc<CR>
+nnoremap ;s :source $MYVIMRC<CR>
+nnoremap <leader>' :execute "normal! '" . nr2char(getchar())<CR>
+
+" Leader to return to previous cursor position
+nnoremap go <C-o>
+nnoremap gi <C-i>

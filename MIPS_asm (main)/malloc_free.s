@@ -164,6 +164,7 @@ MallocMain:
     # get base addr of mem block to begin allocating memory, store it in s1
     move $a0, $s0
     jal GetAllocAddr
+
     move $s1, $v0                                       # v0 is returned addr in heap to alloc
 
     # pop mem block size value off the stack
@@ -194,6 +195,34 @@ MallocMain:
     la $a0, BlockAllocatedStr
     li $v0, 4
     syscall
+
+    ###
+    la $a0, MallocListHeadPointer
+    lw $a0, ($a0)
+    lw $a0, ($a0)
+    lb $t0, ($a0)
+    li $v0, 1
+    syscall             # len
+    addi $a0, 1
+    lb $t0, ($a0)
+    li $v0, 11
+    syscall             # a
+    addi $a0, 1
+    lb $t0, ($a0)
+    syscall             # b
+    addi $a0, 1
+    lb $t0, ($a0)
+    syscall             # null byte (0)
+    li $v0, 1
+    syscall
+    addi $a0, 1
+    lb $t0, ($a0)
+    syscall             # 0
+    addi $a0, 1
+    lb $t0, ($a0)
+    syscall             # 0
+    j end
+    ###
 
     j MainLoop
 
@@ -417,6 +446,15 @@ CreateFirstMallocNode:
 
     # return mem block pointer for storing data
     move $v0, $a0
+
+    # store node pointer in head pointer
+    la $a0, MallocListHeadPointer
+    sw $a1, ($a0)
+
+    # store node pointer in tail pointer (same since first node)
+    la $a0, MallocListTailPointer
+    sw $a1, ($a0)
+
     jr $ra
 
 # a1 is node pointer, a2 is mem block pointer
