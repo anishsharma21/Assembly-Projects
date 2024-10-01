@@ -197,30 +197,16 @@ MallocMain:
     syscall
 
     ###
-    la $a0, MallocListHeadPointer
-    lw $a0, ($a0)
-    lw $a0, ($a0)
-    lb $t0, ($a0)
-    li $v0, 1
-    syscall             # len
-    addi $a0, 1
-    lb $t0, ($a0)
-    li $v0, 11
-    syscall             # a
-    addi $a0, 1
-    lb $t0, ($a0)
-    syscall             # b
-    addi $a0, 1
-    lb $t0, ($a0)
-    syscall             # null byte (0)
+    la $t0, MallocListHeadPointer
+    lw $t0, ($t0)
+    lw $t0, ($t0)
+    lb $a0, ($t0)
     li $v0, 1
     syscall
-    addi $a0, 1
-    lb $t0, ($a0)
-    syscall             # 0
-    addi $a0, 1
-    lb $t0, ($a0)
-    syscall             # 0
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
     j end
     ###
 
@@ -430,13 +416,13 @@ ManagedHeapAlloc:
 
     # check if malloc list is empty, if it is, set head and tail node, else new tail node
     la $t0, MallocListCount
-    lb $t0, ($a1)
+    lb $t0, ($t0)
     move $a0, $t1
     beq $t0, 0, CreateFirstMallocNode
     move $a1, $t1
     j CreateMallocTailNode
 
-# a0 is mem block pointer, a1 is node pointer
+# a0 is mem block base pointer, a1 is pointer to the node in malloc list
 CreateFirstMallocNode:
     # set first 4 bytes for cur addr of mem block
     sw $a0, ($a1)
@@ -444,7 +430,7 @@ CreateFirstMallocNode:
     # set next 4 bytes for next node addr (which is same because head and tail node same for first node)
     sw $a0, 4($a1)
 
-    # return mem block pointer for storing data
+    # return mem block base pointer for storing data
     move $v0, $a0
 
     # store node pointer in head pointer
