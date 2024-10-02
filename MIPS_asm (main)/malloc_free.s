@@ -196,20 +196,6 @@ MallocMain:
     li $v0, 4
     syscall
 
-    ###
-    la $t0, MallocListHeadPointer
-    lw $t0, ($t0)
-    lw $t0, ($t0)
-    lb $a0, ($t0)
-    li $v0, 1
-    syscall
-    addi $t0, 1
-    lb $a0, ($t0)
-    li $v0, 11
-    syscall
-    j end
-    ###
-
     j MainLoop
 
 # FIXME BIG issue - free and malloc lists will end up with holes when alloc/dealloc occurs and offset from base won't work when loading or storing values - the entire list needs to be adjusted so that addresses after the alloc/dealloc addr need to be moved 1 down to fill the space and to ensure the offset still works
