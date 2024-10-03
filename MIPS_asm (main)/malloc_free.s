@@ -161,11 +161,12 @@ MallocMain:
     addi $sp, -4
     sw $s0, ($sp)
 
-    # get base addr of mem block to begin allocating memory, store it in s1
+    # get base addr of mem block to begin allocating memory
     move $a0, $s0
     jal GetAllocAddr
 
-    move $s1, $v0                                       # v0 is returned addr in heap to alloc
+    # v0 is bp to new mem block
+    move $s1, $v0
 
     # pop mem block size value off the stack
     lw $s0, ($sp)
@@ -394,7 +395,7 @@ ManagedHeapAlloc:
     addi $t3, 1
     sw $t3, ($s0)
 
-    # create new node to track mem block
+    # create new node in malloc list
     la $a0, 8
     li $v0, 9
     syscall
@@ -405,16 +406,15 @@ ManagedHeapAlloc:
     lb $t0, ($t0)
     move $a0, $t1
     beq $t0, 0, CreateFirstMallocNode
-    move $a1, $t1
     j CreateMallocTailNode
 
-# a0 is mem block base pointer, a1 is pointer to the node in malloc list
+# a0 is mem block base pointer, a1 is pointer to the new node in malloc list
 CreateFirstMallocNode:
     # set first 4 bytes for cur addr of mem block
     sw $a0, ($a1)
 
     # set next 4 bytes for next node addr (which is same because head and tail node same for first node)
-    sw $a0, 4($a1)
+    sw $a1, 4($a1)
 
     # return mem block base pointer for storing data
     move $v0, $a0
@@ -427,16 +427,21 @@ CreateFirstMallocNode:
     la $a0, MallocListTailPointer
     sw $a1, ($a0)
 
+    # update malloc list count (exactly 1)
+    la $a0, MallocListCount
+    li $t0, 1
+    sw $t0, ($a0)
+
     jr $ra
 
-# a1 is node pointer, a2 is mem block pointer
+# a0 is mem block base pointer, a1 is pointer to the new node in malloc list
 CreateMallocTailNode:
-    # get address to tail node
+    # set mem block pointer in new node
+    sw $a0, 0($a1)
+
+    # get address to cur tail node
     la $t0, MallocListTailPointer
     lw $t1, ($t0)
-
-    # set mem block pointer in new node
-    sw $a2, 0($a1)
 
     # set next pointer in prev tail node to new node pointer
     sw $a1, 4($t1)
@@ -445,7 +450,14 @@ CreateMallocTailNode:
     sw $a1, ($t0)
 
     # return mem block pointer for storing data
-    move $v0, $a2
+    move $v0, $a0
+
+    # update malloc list count
+    la $t0, MallocListCount
+    lb $a0, ($t0)
+    addi $a0, 1
+    sb $a0, ($t0)
+
     jr $ra
 
 # a0 is base addr of name buffer, a1 is addr for alloc
@@ -472,6 +484,57 @@ FindNameLen:
     jr $ra
 
 DisplayHeap:
+    ###
+    la $t0, MallocListHeadPointer
+    lw $t0, ($t0)
+    lw $t0, ($t0)
+    lb $a0, ($t0)
+    li $v0, 1
+    syscall
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 1
+    syscall
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 1
+    syscall
+
+    la $t0, MallocListHeadPointer
+    lw $t0, ($t0)
+    lw $t0, 4($t0)
+    lw $t0, ($t0)
+    lb $a0, ($t0)
+    li $v0, 1
+    syscall
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+    addi $t0, 1
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+
+    la $a0, MallocListCount
+    lb $a0, ($a0)
+    li $v0, 1
+    syscall
+    j end
+    ###
+
     la $a0, MallocListBP
     lw $a0, ($a0)
     move $s0, $a0
