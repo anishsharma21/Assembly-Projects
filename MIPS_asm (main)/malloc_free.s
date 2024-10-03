@@ -587,6 +587,7 @@ DisplayHeap:
     syscall
     j MainLoop
 
+# TODO node idx is redundant, remove logic relating to it, just need to check if a1 is 0
 # a0 contains base pointer to current node, a1 is node count, a2 is node idx
 DisplayHeapLoop:
     # save node addr in temp bc a0 will be overwritten
@@ -596,7 +597,7 @@ DisplayHeapLoop:
     move $s0, $a0
 
     # check if all blocks have been displayed
-    bge $a2, $a1, FinishHeapBlockDisplay
+    ble $a1, 0, FinishHeapBlockDisplay
 
     # print open bracket for display formatting
     la $a0, OpenBracketStr
@@ -680,11 +681,11 @@ FinishHeapBlockDisplay:
     # load in next node from next pointer of cur node
     lw $a0, 4($s0)
 
-    # update cur node idx
-    addi $a2, 1
+    # decr node count
+    addi $a1, -1
 
-    # if cur node idx <= node count, display next mem block
-    blt $a2, $a1, DisplayHeapLoop
+    # if node count still > 0, then display next mem block
+    bgt $a1, 0, DisplayHeapLoop
 
     # else end heap display and return to DisplayHeap
     jr $ra
