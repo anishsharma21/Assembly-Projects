@@ -484,108 +484,130 @@ FindNameLen:
     jr $ra
 
 DisplayHeap:
+    # check that count is > 0
+    la $t0, MallocListCount
+    lb $t0, ($t0)
+    beq $t0, 0, HeapEmptyError
+    blt $t0, 0, MallocListCountError
 
-    ###
-
-    la $t0, MallocListHeadPointer
-    lw $a0, ($t0)
-    move $t1, $a0
-    li $v0, 1
-    syscall
-    la $a0, newline
+    # print memory str
+    la $a0, MemoryStr
     li $v0, 4
     syscall
-    li $v0, 1
-    la $t0, ManagedHeapBP
-    lw $a0, ($t0)
-    syscall
-    sub $t1, $t1, $a0
-    la $a0, newline
-    li $v0, 4
-    syscall
-    move $a0, $t1
-    li $v0, 1
-    syscall
 
-    j end
-    ###
-
-    la $a0, MallocListBP
+    # load in args for displaying heap
+    la $a0, MallocListHeadPointer
     lw $a0, ($a0)
-    move $s0, $a0
-    lw $a0, ($a0)                                       # pointer to the actual malloc list arr
-    la $a1, MallocListCount
-    lb $a1, ($a1)
+    move $a1, $t0
     li $a2, 0
-
-    # if malloc list count > 0, then display heap, else heap is empty
-    beq $a1, 0, HeapEmptyError
-    blt $a1, 0, MallocListCountError
     jal DisplayHeapLoop
 
+    # newline before returning to main loop
     la $a0, newline
     li $v0, 4
     syscall
     j MainLoop
 
+# a0 contains base pointer to current node, a1 is node count, a2 is node idx
 DisplayHeapLoop:
+    # save node addr in temp bc a0 will be overwritten
     move $t0, $a0
+
+    # save node addr in save reg to access next pointer at the end of mem block display
+    move $s0, $a0
 
     # check if all blocks have been displayed
     bge $a2, $a1, FinishHeapBlockDisplay
 
+    # print open bracket for display formatting
     la $a0, OpenBracketStr
     li $v0, 4
     syscall
 
-    # save len, print len, decr len
+    # dereference node base pointer -> get base pointer to mem block
+    lw $t0, ($t0)
+
+    # load and print len byte from mem block
     lb $a0, ($t0)
     li $v0, 1
     syscall
-    move $t1, $a0
 
+    # use t1 for checking end of mem block, decr after printing first byte (len byte)
+    move $t1, $a0
+    addi $t1, -1
+
+    # print sep between len and next mem block section (string name)
     la $a0, sep
     li $v0, 4
     syscall
 
-    addi $t1, -1
+    # incr node addr pointer to start of string name
     addi $t0, 1
     j PrintHeapBlockName
 
+# t0 addr pointer for mem block (mut), t1 len check of mem block (mut)
 PrintHeapBlockName:
+    # print char (byte)
     lb $a0, ($t0)
     li $v0, 11
     syscall
+
+    # decr len check, incr to next byte in mem block
     addi $t1, -1
     addi $t0, 1
+
+    # load next byte, if not null, continue printing string name
     lb $a0, ($t0)
     bne $a0, 0, PrintHeapBlockName
+
+    # if null byte, name finished, cont with space display
+    # skipping null byte print, go to first space byte
     addi $t0, 1
     addi $t1, -1
+
+    # space alloc might be 0, so block might be finished
     ble $t1, 0, FinishHeapBlockDisplay
+
+    # sep between string name and next section, space display
     la $a0, sep
     li $v0, 4
     syscall
     j PrintHeapBlockSpace
 
+# t0 addr pointer for mem block (mut), t1 len check of mem block (mut)
 PrintHeapBlockSpace:
+    # load in space byte and print
     lb $a0, ($t0)
     li $v0, 1
     syscall
+
+    # decr len check, incr to next byte in mem block
     addi $t0, 1
     addi $t1, -1
+
+    # finish block display if len check 0, mem block complete
     ble $t1, 0, FinishHeapBlockDisplay
+
+    # else continue printing space in mem block
     j PrintHeapBlockSpace
 
+# a1 is total node count, a2 is cur node idx, s0 is cur node bp
 FinishHeapBlockDisplay:
+    # close off mem block display format with closed bracket
     la $a0, ClosedBracketStr
     li $v0, 4
     syscall
 
+    # load in next node from next pointer of cur node
+    lw $a0, 4($s0)
+
+    # update cur node idx
     addi $a2, 1
-    addi $s0, 4
-    lw $a0, ($s0)
+
+    # if cur node idx <= node count, display next mem block
     blt $a2, $a1, DisplayHeapLoop
+
+    # else end heap display and return to DisplayHeap
     jr $ra
 
 # a0 is base addr of new mem block, a1 is size of new mem block
