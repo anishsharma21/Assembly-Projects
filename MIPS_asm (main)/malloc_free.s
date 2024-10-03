@@ -15,7 +15,6 @@ MallocListHeadPointer: .space 4
 MallocListTailPointer: .space 4
 MallocListBP: .space 4
 MallocListCount: .byte 0
-MallocListCap: .byte 4
 
 # free list - linked list data structure used to track details about deallocated/freed nodes
 .align 2
@@ -462,24 +461,34 @@ CreateMallocTailNode:
 
 # a0 is base addr of name buffer, a1 is addr for alloc
 StoreName:
+    # load in byte (char) from name buffer and store in alloc space
     lb $t0, ($a0)
     sb $t0, ($a1)
+
+    # incr buffer and alloc pointers
     addi $a0, 1
     addi $a1, 1
-    lb $t0, ($a0)                                       # checking next val
-    bne $t0, 10, StoreName                              # keep storing until line feed encountered
 
-    li $t0, 0                                           # null termination of ascii str
-    lb $t0, ($a1)
+    # check if line feed encountered, if not, continue copying
+    lb $t0, ($a0)
+    bne $t0, 10, StoreName
+
+    # null terminate the string and return to MallocMain
+    li $t0, 0
+    sb $t0, ($a1)
     jr $ra
 
 # a0 is base addr for name buffer, v0 is len returned
 FindNameLen:
-    # lb until line feed (10)
+    # load byte and incr pointer and len count
     lb $t0, ($a0)
     addi $v0, 1
     addi $a0, 1
+
+    # if line feed not encountered, continue with subroutine
     bne $t0, 10, FindNameLen
+
+    # else decr count by 1 (went over by 1) and return back to malloc
     addi $v0, -1
     jr $ra
 
@@ -612,25 +621,39 @@ FinishHeapBlockDisplay:
 
 # a0 is base addr of new mem block, a1 is size of new mem block
 PrintAllocBlock:
+    # save base of mem block in temp since a0 will be overwritten
     move $t0, $a0
+
+    # load in byte at cur mem block pointer and print int
     lb $a0, ($a0)
     li $v0, 1
     syscall
+
+    # incr pointer, decr size of block (for len check)
     addi $t0, 1
     addi $a1, -1
+
+    # if not last byte, print sep
     bgt $a1, 0, PrintSepA
+
+    # else last byte printed, no sep, just closed bracket, newline
     la $a0, ClosedBracketStr
     li $v0, 4
     syscall
     la $a0, newline
     li $v0, 4
     syscall
+
+    # return to MallocMain
     jr $ra
 
 PrintSepA:
+    # load in sep str and print it
     la $a0, sep
     li $v0, 4
     syscall
+
+    # a0 has been overwritten entire time, move cur mem block pointer into it for next iter
     move $a0, $t0
     j PrintAllocBlock
 
