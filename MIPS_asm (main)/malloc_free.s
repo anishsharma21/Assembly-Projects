@@ -49,8 +49,9 @@ MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
 NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
 HeapOverflowErr: .asciiz "\nManaged heap is full\n"
-ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
+ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
+NoAllocationErr: .asciiz "\nNothing to free\n"
 FreeListOverflowErr: .asciiz "\nManaged free list is full\n"
 MallocListCountErr: .asciiz "\nNegative malloc list count encountered."
 NameNotFoundErr: .asciiz "\nName not found.\nTry again.\n\n"
@@ -366,7 +367,7 @@ PrintAllocBlock:
     addi $a1, -1
 
     # if not last byte, print sep
-    bgt $a1, 0, PrintSep
+    bgt $a1, 0, PrintSepAllocBlock
 
     # else last byte printed, no sep, just closed bracket, newline
     la $a0, ClosedBracketStr
@@ -379,7 +380,7 @@ PrintAllocBlock:
     # return to MallocMain
     jr $ra
 
-PrintSep:
+PrintSepAllocBlock:
     # load in sep str and print it
     la $a0, sep
     li $v0, 4
@@ -394,31 +395,33 @@ PrintSep:
 
 # FIXME BIG issue - free and malloc lists will end up with holes when alloc/dealloc occurs and offset from base won't work when loading or storing values - the entire list needs to be adjusted so that addresses after the alloc/dealloc addr need to be moved 1 down to fill the space and to ensure the offset still works
 free:
-    # first check if heap is empty
-    la $a0, ManagedHeapBP
-    lw $a0, ($a0)
-    la $a1, ManagedHeapNP
-    lw $a1, ($a1)
-    beq $a0, $a1, HeapEmptyError
+    # first check if malloc list is empty (no mem blocks alloc)
+    la $t0, MallocListCount
+    lb $t0, ($t0)
+    beq $t0, 0, NoAllocationError
 
+    # begin by showing how many mem blocks have been allocated in heap
     la $a0, AllocatedBlockCountStr
     li $v0, 4
     syscall
-    la $a0, MallocListCount
-    lb $a0, ($a0)
+    la $t0, MallocListCount
+    lb $a0, ($t0)
     li $v0, 1
     syscall
 
+    # str for prefixing block names, displayed for user to choose from
     la $a0, BlockNamesStr
     li $v0, 4
     syscall
 
-    # begin by printing names of variables in memory
-    la $a0, ManagedHeapBP
+    # print names of all currently allocated blocks, user can choose which to free
+    la $a0, MallocListHeadPointer
     lw $a0, ($a0)
-    la $a1, ManagedHeapNP
-    lw $a1, ($a1)
+    la $a1, MallocListCount
+    lb $a1, ($a1)
     jal DisplayBlockNames
+
+    # TODO complete up until here, finish the rest
 
     # v0 will contain bp addr to mem block to free
     jal FindNameMallocList
@@ -441,6 +444,57 @@ free:
     sb $t3, ($t2)
 
     j MainLoop
+
+# a0 is cur node bp, a1 is total node count
+DisplayBlockNames:
+    # save cur node bp to access np later, a0 will be overwritten
+    move $s0, $a0
+
+    # load addr to mem block from cur node bp
+    lw $t0, ($a0)
+
+    # skip len byte and begin displaying name in next subroutine
+    addi $t0, 1
+    j DisplayBlockNameLoop
+
+# t0 is pointer to byte of interest in mem block
+DisplayBlockNameLoop:
+    # load and print first byte/char of name string
+    lb $a0, ($t0)
+    li $v0, 11
+    syscall
+
+    # check if next byte is not null, then continue printing char in name
+    addi $t0, 1
+    lb $a0, ($t0)
+    bne $a0, 0, DisplayBlockNameLoop
+
+    # else j to subroutine for next name (if exists)
+    j NextBlockName
+
+# a1 is total node count (mut), s0 is saved cur node bp
+NextBlockName:
+    # decr block count, if 0, all block names printed
+    addi $a1, -1
+    ble $a1, 0, FinishDisplayBlockNames
+
+    # print sep since next block name still exists
+    la $a0, sep
+    li $v0, 4
+    syscall
+
+    # load in next pointer from saved cur node bp
+    lw $a0, 4($s0)
+
+    # cont by printing next block name
+    j DisplayBlockNames
+
+FinishDisplayBlockNames:
+    # print newline then return to free
+    la $a0, newline
+    li $v0, 4
+    syscall
+    jr $ra
 
 # no args, returns addr to malloc list mem block to free in v0
 FindNameMallocList:
@@ -504,46 +558,6 @@ NameNotFound:
     li $v0, 4
     syscall
     j FindNameMallocList
-
-# TODO can probably replace a0 with t0 here throughout, only use it as arg for syscalls
-DisplayBlockNames:
-    la $a0, MallocListBP
-    lw $a0, ($a0)                                       # pointer to malloc list arr
-    move $s0, $a0
-    lw $a0, ($a0)                                       # pointer to first addr in malloc list arr
-    addi $a0, 1                                         # skip len byte
-    la $a1, MallocListCount
-    lb $a1, ($a1)
-    ble $a1, 0, HeapEmptyError
-    move $t0, $a0
-    j DisplayBlockNameLoop
-
-DisplayBlockNameLoop:
-    lb $a0, ($t0)
-    li $v0, 11
-    syscall
-    addi $t0, 1
-    lb $a0, ($t0)
-    beq $a0, 0, NextBlockName
-    j DisplayBlockNameLoop
-
-NextBlockName:
-    addi $a1, -1
-    ble $a1, 0, FinishDisplayBlockNames
-    la $a0, sep
-    li $v0, 4
-    syscall
-    addi $s0, 4
-    lw $t0, ($s0)
-    addi $t0, 1                                         # skip len byte
-    j DisplayBlockNameLoop
-
-FinishDisplayBlockNames:
-    la $a0, newline
-    li $v0, 4
-    syscall
-    syscall
-    jr $ra
 
 
 ######################### DISPLAY #########################
@@ -678,8 +692,8 @@ FinishHeapBlockDisplay:
 
 ######################### ERRORS #########################
 
-HeapEmptyError:
-    la $a0, HeapEmptyErr
+NoAllocationError:
+    la $a0, NoAllocationErr
     li $v0, 4
     syscall
     j MainLoop
@@ -692,6 +706,12 @@ MallocListCountError:
 
 HeapOverflowError:
     la $a0, HeapOverflowErr
+    li $v0, 4
+    syscall
+    j end
+
+HeapEmptyError:
+    la $a0, HeapEmptyErr
     li $v0, 4
     syscall
     j end
