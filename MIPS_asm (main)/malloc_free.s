@@ -484,54 +484,29 @@ FindNameLen:
     jr $ra
 
 DisplayHeap:
+
     ###
+
     la $t0, MallocListHeadPointer
-    lw $t0, ($t0)
-    lw $t0, ($t0)
-    lb $a0, ($t0)
+    lw $a0, ($t0)
+    move $t1, $a0
     li $v0, 1
     syscall
-    addi $t0, 1
-    lb $a0, ($t0)
-    li $v0, 11
+    la $a0, newline
+    li $v0, 4
     syscall
-    addi $t0, 1
-    lb $a0, ($t0)
-    li $v0, 11
-    syscall
-    addi $t0, 1
-    lb $a0, ($t0)
-    li $v0, 11
-    syscall
-    addi $t0, 1
-    lb $a0, ($t0)
     li $v0, 1
+    la $t0, ManagedHeapBP
+    lw $a0, ($t0)
     syscall
-    addi $t0, 1
-    lb $a0, ($t0)
+    sub $t1, $t1, $a0
+    la $a0, newline
+    li $v0, 4
+    syscall
+    move $a0, $t1
     li $v0, 1
     syscall
 
-    la $t0, MallocListHeadPointer
-    lw $t0, ($t0)
-    lw $t0, 4($t0)
-    lw $t0, ($t0)
-    lb $a0, ($t0)
-    li $v0, 1
-    syscall
-    addi $t0, 1
-    lb $a0, ($t0)
-    li $v0, 11
-    syscall
-    addi $t0, 1
-    lb $a0, ($t0)
-    li $v0, 11
-    syscall
-
-    la $a0, MallocListCount
-    lb $a0, ($a0)
-    li $v0, 1
-    syscall
     j end
     ###
 
