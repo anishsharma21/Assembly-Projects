@@ -51,7 +51,6 @@ NameNotUniqueErr: .asciiz "\nChoose a unique name\n"
 HeapOverflowErr: .asciiz "\nManaged heap is full\n"
 ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
-MallocListOverflowErr: .asciiz "\nManaged malloc list is full\n"
 FreeListOverflowErr: .asciiz "\nManaged free list is full\n"
 MallocListCountErr: .asciiz "\nNegative malloc list count encountered."
 NameNotFoundErr: .asciiz "\nName not found.\nTry again.\n\n"
@@ -66,6 +65,7 @@ space: .asciiz " "
 .globl free
 
 main:
+    # entry point to program
     # allocate mem for managed heap
     li $a0, 1024                                        # 1024 bytes of space in managed heap
     li $v0, 9
@@ -79,6 +79,7 @@ main:
     la $a0, ManagedHeapNP
     sw $v0, ($a0)
 
+    # intro str printed only at start of program
     la $a0, IntroStr
     li $v0, 4
     syscall
@@ -87,17 +88,20 @@ main:
     j malloc
 
 MainLoop:
+    # prompting user for a choice (1 char)
     li $v0, 4
     la $a0, ChoiceStr
     syscall
     la $a0, ChoicePromptStr
     syscall
 
+    # store user choice in buffer
     la $a0, ChoiceBuffer
     li $a1, 4
     li $v0, 8
     syscall
 
+    # switch-case for users choice
     la $a0, ChoiceBuffer
     lb $a0, ($a0)
     beq $a0, 97, malloc
@@ -105,10 +109,14 @@ MainLoop:
     beq $a0, 100, DisplayHeap
     beq $a0, 113, end
 
+    # if not from options, retry main loop logic
     la $a0, ChoiceErr
     li $v0, 4
     syscall
     j MainLoop
+
+
+######################### MALLOC #########################
 
 malloc:
     # prompt user for name of new memory block / variable
@@ -136,6 +144,7 @@ malloc:
     li $v0, 4
     syscall
 
+    # read integer for additional space
     li $v0, 5
     syscall
     move $a2, $v0
@@ -143,6 +152,20 @@ malloc:
     # proceed to main subroutine of malloc implementation
     la $a0, NameBuffer
     j MallocMain
+
+# a0 is base addr for name buffer, v0 is len returned
+FindNameLen:
+    # load byte and incr pointer and len count
+    lb $t0, ($a0)
+    addi $v0, 1
+    addi $a0, 1
+
+    # if line feed not encountered, continue with subroutine
+    bne $t0, 10, FindNameLen
+
+    # else decr count by 1 (went over by 1) and return back to malloc
+    addi $v0, -1
+    jr $ra
 
 # a0 is name buffer base addr, a1 is name len (accounting for null byte too), a2 is space len
 MallocMain:
@@ -192,11 +215,182 @@ MallocMain:
     lb $a1, ($a0)
     jal PrintAllocBlock
 
+    # print success for block alloc
     la $a0, BlockAllocatedStr
     li $v0, 4
     syscall
 
     j MainLoop
+
+# a0 is new block size
+GetAllocAddr:
+    # check if we can allocate to free list node before heap alloc
+    la $t0, FreeListCount
+    lb $t0, ($t0)
+    beq $t0, 0, ManagedHeapAlloc
+
+    # TODO using the free list linked list pointers instead
+    la $t1, FreeListBP
+    lw $t1, ($t1)
+    lw $t1, ($t1)                                       # pointer to first addr in free list
+    j SearchFreeList
+
+# a0 is new block size
+ManagedHeapAlloc:
+    # first check there is enough space in the heap
+    la $t0, ManagedHeapBP
+    lw $t0, ($t0)
+    la $t1, ManagedHeapNP
+    move $s0, $t1
+    lw $t1, ($t1)
+    la $t2, ManagedHeapCap
+    lw $t2, ($t2)
+
+    # max addr in managed heap in bytes
+    add $t0, $t0, $t2
+
+    # addr for last byte in managed heap if allocated
+    add $t3, $t1, $a0
+    addi $t3, -1
+
+    # TODO instead of err, should dynamically resize heap
+    bgt $t3, $t0, HeapOverflowError
+
+    # store updated np (given no heap overflow)
+    addi $t3, 1
+    sw $t3, ($s0)
+
+    # create new node in malloc list
+    la $a0, 8
+    li $v0, 9
+    syscall
+    move $a1, $v0
+
+    # check if malloc list is empty, if it is, set head and tail node, else new tail node
+    la $t0, MallocListCount
+    lb $t0, ($t0)
+    move $a0, $t1
+    beq $t0, 0, CreateFirstMallocNode
+    j CreateMallocTailNode
+
+# a0 is mem block base pointer, a1 is pointer to the new node in malloc list
+CreateFirstMallocNode:
+    # set first 4 bytes for cur addr of mem block
+    sw $a0, ($a1)
+
+    # set next 4 bytes for next node addr (which is same because head and tail node same for first node)
+    sw $a1, 4($a1)
+
+    # return mem block base pointer for storing data
+    move $v0, $a0
+
+    # store node pointer in head pointer
+    la $a0, MallocListHeadPointer
+    sw $a1, ($a0)
+
+    # store node pointer in tail pointer (same since first node)
+    la $a0, MallocListTailPointer
+    sw $a1, ($a0)
+
+    # update malloc list count (exactly 1)
+    la $a0, MallocListCount
+    li $t0, 1
+    sw $t0, ($a0)
+
+    jr $ra
+
+# a0 is mem block base pointer, a1 is pointer to the new node in malloc list
+CreateMallocTailNode:
+    # set mem block pointer in new node
+    sw $a0, 0($a1)
+
+    # get address to cur tail node
+    la $t0, MallocListTailPointer
+    lw $t1, ($t0)
+
+    # set next pointer in prev tail node to new node pointer
+    sw $a1, 4($t1)
+
+    # set global tail node pointer to new node
+    sw $a1, ($t0)
+
+    # return mem block pointer for storing data
+    move $v0, $a0
+
+    # update malloc list count
+    la $t0, MallocListCount
+    lb $a0, ($t0)
+    addi $a0, 1
+    sb $a0, ($t0)
+
+    jr $ra
+
+# TODO not complete
+SearchFreeList:
+    lb $a0, ($t1)
+    li $v0, 1
+    syscall
+    j end
+
+# a0 is base addr of name buffer, a1 is addr for alloc
+StoreName:
+    # load in byte (char) from name buffer and store in alloc space
+    lb $t0, ($a0)
+    sb $t0, ($a1)
+
+    # incr buffer and alloc pointers
+    addi $a0, 1
+    addi $a1, 1
+
+    # check if line feed encountered, if not, continue copying
+    lb $t0, ($a0)
+    bne $t0, 10, StoreName
+
+    # null terminate the string and return to MallocMain
+    li $t0, 0
+    sb $t0, ($a1)
+    jr $ra
+
+# a0 is base addr of new mem block, a1 is size of new mem block
+PrintAllocBlock:
+    # save base of mem block in temp since a0 will be overwritten
+    move $t0, $a0
+
+    # load in byte at cur mem block pointer and print int
+    lb $a0, ($a0)
+    li $v0, 1
+    syscall
+
+    # incr pointer, decr size of block (for len check)
+    addi $t0, 1
+    addi $a1, -1
+
+    # if not last byte, print sep
+    bgt $a1, 0, PrintSep
+
+    # else last byte printed, no sep, just closed bracket, newline
+    la $a0, ClosedBracketStr
+    li $v0, 4
+    syscall
+    la $a0, newline
+    li $v0, 4
+    syscall
+
+    # return to MallocMain
+    jr $ra
+
+PrintSep:
+    # load in sep str and print it
+    la $a0, sep
+    li $v0, 4
+    syscall
+
+    # a0 has been overwritten entire time, move cur mem block pointer into it for next iter
+    move $a0, $t0
+    j PrintAllocBlock
+
+
+######################### FREE #########################
 
 # FIXME BIG issue - free and malloc lists will end up with holes when alloc/dealloc occurs and offset from base won't work when loading or storing values - the entire list needs to be adjusted so that addresses after the alloc/dealloc addr need to be moved 1 down to fill the space and to ensure the offset still works
 free:
@@ -351,146 +545,8 @@ FinishDisplayBlockNames:
     syscall
     jr $ra
 
-# a0 is new block size
-GetAllocAddr:
-    la $t0, FreeListCount
-    lb $t0, ($t0)
-    beq $t0, 0, ManagedHeapAlloc
 
-    la $t1, FreeListBP
-    lw $t1, ($t1)
-    lw $t1, ($t1)                                       # pointer to first addr in free list
-    j SearchFreeList
-
-# TODO not complete
-SearchFreeList:
-    lb $a0, ($t1)
-    li $v0, 1
-    syscall
-    j end
-
-# a0 is new block size
-ManagedHeapAlloc:
-    # first check there is enough space in the heap
-    la $t0, ManagedHeapBP
-    lw $t0, ($t0)
-    la $t1, ManagedHeapNP
-    move $s0, $t1
-    lw $t1, ($t1)
-    la $t2, ManagedHeapCap
-    lw $t2, ($t2)
-
-    # max addr in managed heap in bytes
-    add $t0, $t0, $t2
-
-    # addr for last byte in managed heap if allocated
-    add $t3, $t1, $a0
-    addi $t3, -1
-
-    # TODO instead of err, should dynamically resize heap
-    bgt $t3, $t0, HeapOverflowError
-
-    # store updated np (given no heap overflow)
-    addi $t3, 1
-    sw $t3, ($s0)
-
-    # create new node in malloc list
-    la $a0, 8
-    li $v0, 9
-    syscall
-    move $a1, $v0
-
-    # check if malloc list is empty, if it is, set head and tail node, else new tail node
-    la $t0, MallocListCount
-    lb $t0, ($t0)
-    move $a0, $t1
-    beq $t0, 0, CreateFirstMallocNode
-    j CreateMallocTailNode
-
-# a0 is mem block base pointer, a1 is pointer to the new node in malloc list
-CreateFirstMallocNode:
-    # set first 4 bytes for cur addr of mem block
-    sw $a0, ($a1)
-
-    # set next 4 bytes for next node addr (which is same because head and tail node same for first node)
-    sw $a1, 4($a1)
-
-    # return mem block base pointer for storing data
-    move $v0, $a0
-
-    # store node pointer in head pointer
-    la $a0, MallocListHeadPointer
-    sw $a1, ($a0)
-
-    # store node pointer in tail pointer (same since first node)
-    la $a0, MallocListTailPointer
-    sw $a1, ($a0)
-
-    # update malloc list count (exactly 1)
-    la $a0, MallocListCount
-    li $t0, 1
-    sw $t0, ($a0)
-
-    jr $ra
-
-# a0 is mem block base pointer, a1 is pointer to the new node in malloc list
-CreateMallocTailNode:
-    # set mem block pointer in new node
-    sw $a0, 0($a1)
-
-    # get address to cur tail node
-    la $t0, MallocListTailPointer
-    lw $t1, ($t0)
-
-    # set next pointer in prev tail node to new node pointer
-    sw $a1, 4($t1)
-
-    # set global tail node pointer to new node
-    sw $a1, ($t0)
-
-    # return mem block pointer for storing data
-    move $v0, $a0
-
-    # update malloc list count
-    la $t0, MallocListCount
-    lb $a0, ($t0)
-    addi $a0, 1
-    sb $a0, ($t0)
-
-    jr $ra
-
-# a0 is base addr of name buffer, a1 is addr for alloc
-StoreName:
-    # load in byte (char) from name buffer and store in alloc space
-    lb $t0, ($a0)
-    sb $t0, ($a1)
-
-    # incr buffer and alloc pointers
-    addi $a0, 1
-    addi $a1, 1
-
-    # check if line feed encountered, if not, continue copying
-    lb $t0, ($a0)
-    bne $t0, 10, StoreName
-
-    # null terminate the string and return to MallocMain
-    li $t0, 0
-    sb $t0, ($a1)
-    jr $ra
-
-# a0 is base addr for name buffer, v0 is len returned
-FindNameLen:
-    # load byte and incr pointer and len count
-    lb $t0, ($a0)
-    addi $v0, 1
-    addi $a0, 1
-
-    # if line feed not encountered, continue with subroutine
-    bne $t0, 10, FindNameLen
-
-    # else decr count by 1 (went over by 1) and return back to malloc
-    addi $v0, -1
-    jr $ra
+######################### DISPLAY #########################
 
 DisplayHeap:
     # check that count is > 0
@@ -619,64 +675,8 @@ FinishHeapBlockDisplay:
     # else end heap display and return to DisplayHeap
     jr $ra
 
-# a0 is base addr of new mem block, a1 is size of new mem block
-PrintAllocBlock:
-    # save base of mem block in temp since a0 will be overwritten
-    move $t0, $a0
 
-    # load in byte at cur mem block pointer and print int
-    lb $a0, ($a0)
-    li $v0, 1
-    syscall
-
-    # incr pointer, decr size of block (for len check)
-    addi $t0, 1
-    addi $a1, -1
-
-    # if not last byte, print sep
-    bgt $a1, 0, PrintSepA
-
-    # else last byte printed, no sep, just closed bracket, newline
-    la $a0, ClosedBracketStr
-    li $v0, 4
-    syscall
-    la $a0, newline
-    li $v0, 4
-    syscall
-
-    # return to MallocMain
-    jr $ra
-
-PrintSepA:
-    # load in sep str and print it
-    la $a0, sep
-    li $v0, 4
-    syscall
-
-    # a0 has been overwritten entire time, move cur mem block pointer into it for next iter
-    move $a0, $t0
-    j PrintAllocBlock
-
-# a0 is base addr of malloc block, a1 is malloc block count
-PrintMallocList:
-    move $t0, $a0
-    lw $a0, ($a0)
-    li $v0, 1
-    syscall
-    addi $t0, 4
-    addi $a1, -1
-    bgt $a1, 0, PrintSepB
-    la $a0, newline
-    li $v0, 4
-    syscall
-    jr $ra
-
-PrintSepB:
-    la $a0, sep
-    li $v0, 4
-    syscall
-    move $a0, $t0
-    j PrintMallocList
+######################### ERRORS #########################
 
 HeapEmptyError:
     la $a0, HeapEmptyErr
@@ -696,12 +696,7 @@ HeapOverflowError:
     syscall
     j end
 
-MallocListOverflowError:
-    la $a0, MallocListOverflowErr
-    li $v0, 4
-    syscall
-    j end
-
+# TODO remove since linked list can't overflow
 FreeListOverflowError:
     la $a0, FreeListOverflowErr
     li $v0, 4
@@ -714,11 +709,11 @@ NameLenError:
     syscall
     j MainLoop
 
+# TODO needs to be used eventually
 NameNotUniqueError:
     la $a0, NameNotUniqueErr
     li $v0, 4
     syscall
-
     j end
 
 end:
