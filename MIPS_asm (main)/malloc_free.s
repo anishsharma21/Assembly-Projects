@@ -419,26 +419,28 @@ free:
     lb $a1, ($a1)
     jal DisplayBlockNames
 
-    # TODO need to handle removing the block from malloc and adding to tail of free list
     # v0 will contain bp addr to mem block to free
     jal FindNameMallocList
-    move $a1, $v0
+    move $s0, $v0
 
-    # place freed mem addr in free list and update free list count
-    la $t0, FreeListBP
-    lw $t0, ($t0)
-    la $t1, FreeListCount
-    move $t2, $t1
-    lb $t1, ($t1)
-    la $t4, FreeListCap
-    lb $t4, ($t4)
-    move $t3, $t1
-    addi $t3, 1
-    bge $t3, $t4, FreeListOverflowError
-    sll $t1, $t1, 2
-    add $t0, $t0, $t1
-    sw $a1, ($t0)
-    sb $t3, ($t2)
+    ###
+    la $a0, MallocListHeadPointer
+    lw $a0, ($a0)
+    lw $a0, 4($a0)
+    li $v0, 1
+    syscall
+    la $a0, newline
+    li $v0, 4
+    syscall
+    move $a0, $s0
+    li $v0, 1
+    syscall
+    j end
+    ###
+
+    # TODO remove node from malloc list and decr count
+
+    # TODO add node to tail of free list and incr count
 
     j MainLoop
 
@@ -493,7 +495,7 @@ FinishDisplayBlockNames:
     syscall
     jr $ra
 
-# no args, returns addr to malloc list mem block to free in v0
+# no args, v0 contains bp to node which should be freed
 FindNameMallocList:
     # prompt user to type name of block to free
     la $a0, BlockNamePromptStr
@@ -556,24 +558,23 @@ HandleLF:
     # otherwise, try next block
     j NameNotFoundNextBlock
 
+# a1 is bp to cur node to be freed and returned
 FoundName:
-    # remove addr from malloc list and update malloc list count
-    li $t0, 0
-    sw $t0, ($a2)
-    la $a0, MallocListCount
-    lb $t0, ($a0)
-    addi $t0, -1
-    sb $t0, ($a0)
-    move $v0, $a2
+    move $v0, $a1
     jr $ra
 
+# a1 is bp to cur node, a2 is malloc list count
 NameNotFoundNextBlock:
-    addi $a3, -1
-    beq $a3, 0, NameNotFound
-    addi $a2, 4
+    # decr malloc list count, if <= 0, no more blocks, name not found
+    addi $a2, -1
+    ble $a2, 0, NameNotFound
+
+    # set a1 to bp of next node
+    lw $a1, 4($a1)
     j SearchNameMallocList
 
 NameNotFound:
+    # print err and return to prompt user for name again
     la $a0, NameNotFoundErr
     li $v0, 4
     syscall
