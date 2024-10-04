@@ -27,12 +27,11 @@ FreeListCap: .byte 4
 
 NameBuffer: .space 200
 ChoiceBuffer: .space 4
-UserFreeInputStr: .space 200
+UserFreeInputBuffer: .space 200
 
 IntroStr: .asciiz "############################################\n#                                          #\n#    Welcome to the malloc/free program    #\n#                                          #\n############################################\n\nThis program has been written in MIPS assembly and involves the allocation and deallocation of memory. You will be prompted to either malloc or free data during the program.\n\nLet's start by allocating a variable.\n"
 NamePromptStr: .asciiz "\nPick a name for the variable: "
 SpacePromptStr: .asciiz "How much space do you want to store: "
-MallocSuccessStr: .asciiz " was allocated at "
 AllocatedBlockStr: .asciiz "\nMemory block allocated: "
 BlockAllocatedStr: .asciiz "\n### You've allocated a block of memory! ###\n"
 ChoiceStr: .asciiz "\nNow, would you like to allocate (a), free (f), or display (d) memory?"
@@ -52,7 +51,6 @@ HeapOverflowErr: .asciiz "\nManaged heap is full\n"
 HeapEmptyErr: .asciiz "\nHeap is empty\n"
 ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 NoAllocationErr: .asciiz "\nNothing to free\n"
-FreeListOverflowErr: .asciiz "\nManaged free list is full\n"
 MallocListCountErr: .asciiz "\nNegative malloc list count encountered."
 NameNotFoundErr: .asciiz "\nName not found.\nTry again.\n\n"
 
@@ -62,8 +60,6 @@ space: .asciiz " "
 
 .text
 .globl main
-.globl malloc
-.globl free
 
 main:
     # entry point to program
@@ -119,6 +115,7 @@ MainLoop:
 
 ######################### MALLOC #########################
 
+.globl malloc
 malloc:
     # prompt user for name of new memory block / variable
     la $a0, NamePromptStr
@@ -394,6 +391,7 @@ PrintSepAllocBlock:
 ######################### FREE #########################
 
 # FIXME BIG issue - free and malloc lists will end up with holes when alloc/dealloc occurs and offset from base won't work when loading or storing values - the entire list needs to be adjusted so that addresses after the alloc/dealloc addr need to be moved 1 down to fill the space and to ensure the offset still works
+.globl free
 free:
     # first check if malloc list is empty (no mem blocks alloc)
     la $t0, MallocListCount
@@ -421,7 +419,7 @@ free:
     lb $a1, ($a1)
     jal DisplayBlockNames
 
-    # TODO complete up until here, finish the rest
+    # TODO completed up until here, finish the rest
 
     # v0 will contain bp addr to mem block to free
     jal FindNameMallocList
@@ -501,15 +499,15 @@ FindNameMallocList:
     la $a0, BlockNamePromptStr
     li $v0, 4
     syscall
-    la $a0, UserFreeInputStr
+    la $a0, UserFreeInputBuffer
     li $a1, 200
     li $v0, 8
     syscall
-    la $a0, UserFreeInputStr
+    la $a0, UserFreeInputBuffer
     lb $a0, ($a0)
     beq $a0, 113, MainLoop
 
-    la $a1, UserFreeInputStr
+    la $a1, UserFreeInputBuffer
     la $a2, MallocListBP
     lw $a2, ($a2)                                       # points to first addr in arr
     la $a3, MallocListCount
@@ -587,7 +585,6 @@ DisplayHeap:
     syscall
     j MainLoop
 
-# TODO node idx is redundant, remove logic relating to it, just need to check if a1 is 0
 # a0 contains base pointer to current node, a1 is node count, a2 is node idx
 DisplayHeapLoop:
     # save node addr in temp bc a0 will be overwritten
@@ -713,13 +710,6 @@ HeapOverflowError:
 
 HeapEmptyError:
     la $a0, HeapEmptyErr
-    li $v0, 4
-    syscall
-    j end
-
-# TODO remove since linked list can't overflow
-FreeListOverflowError:
-    la $a0, FreeListOverflowErr
     li $v0, 4
     syscall
     j end
