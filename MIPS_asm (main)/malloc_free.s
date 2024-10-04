@@ -419,8 +419,7 @@ free:
     lb $a1, ($a1)
     jal DisplayBlockNames
 
-    # TODO completed up until here, finish the rest
-
+    # TODO need to handle removing the block from malloc and adding to tail of free list
     # v0 will contain bp addr to mem block to free
     jal FindNameMallocList
     move $a1, $v0
@@ -496,48 +495,71 @@ FinishDisplayBlockNames:
 
 # no args, returns addr to malloc list mem block to free in v0
 FindNameMallocList:
+    # prompt user to type name of block to free
     la $a0, BlockNamePromptStr
     li $v0, 4
     syscall
+
+    # buffer for user input (up to 50 chars)
     la $a0, UserFreeInputBuffer
     li $a1, 200
     li $v0, 8
     syscall
-    la $a0, UserFreeInputBuffer
-    lb $a0, ($a0)
+
+    # first check if q is entered (then exit)
+    la $t0, UserFreeInputBuffer
+    lb $a0, ($t0)
     beq $a0, 113, MainLoop
 
-    la $a1, UserFreeInputBuffer
-    la $a2, MallocListBP
-    lw $a2, ($a2)                                       # points to first addr in arr
-    la $a3, MallocListCount
-    lb $a3, ($a3)                                       # mutable, decr each addr covered
+    # setup for finding name in malloc list
+    la $a0, UserFreeInputBuffer
+    la $a1, MallocListHeadPointer
+    lw $a1, ($a1)
+    la $a2, MallocListCount
+    lb $a2, ($a2)
     j SearchNameMallocList
 
+# a0 is constant bp to input buff, a1 is bp to cur node, a2 is malloc count (mut)
 SearchNameMallocList:
-    move $t0, $a1                                       # bp to user free input (immutable)
-    lw $t1, ($a2)                                       # addr in malloc list arr at a2 (mutable)
-    addi $t1, 1                                         # skip len byte
+    # load in bp to mem block, skip len byte
+    lw $t0, ($a1)
+    addi $t0, 1
+
+    # copy input buff bp
+    move $t1, $a0
     j CompareName
 
+# t0 bp to mem block, t1 bp to buffer
 CompareName:
-    lb $t3, ($t0)                                       # char from user input buffer
-    lb $t2, ($t1)                                       # char from malloc
+    # load in mem block byte, then buffer byte
+    lb $t2, ($t0)
+    lb $t3, ($t1)
+
+    # incr each pointer to prepare for next iter
     addi $t0, 1
     addi $t1, 1
-    beq $t3, 10, HandleLF                               # either LF found in user input (not null terminated)
-    beq $t2, 0, NameNotFoundNextIter                    # or null byte in name
-    bne $t2, $t3, NameNotFoundNextIter
-    j CompareName
 
+    # check if line feed encountered for buffer
+    beq $t3, 10, HandleLF
+
+    # if bytes equal, continue comparing name
+    beq $t2, $t3, CompareName
+
+    # if not end of name, and bytes not equal, can't be same name, check next block
+    j NameNotFoundNextBlock
+
+# t2 is cur byte of mem block
 HandleLF:
+    # if block byte null, then names are same
     beq $t2, 0, FoundName
-    j NameNotFoundNextIter
+
+    # otherwise, try next block
+    j NameNotFoundNextBlock
 
 FoundName:
     # remove addr from malloc list and update malloc list count
     li $t0, 0
-    sw $t0, ($a2)                                       # clear mem addr
+    sw $t0, ($a2)
     la $a0, MallocListCount
     lb $t0, ($a0)
     addi $t0, -1
@@ -545,7 +567,7 @@ FoundName:
     move $v0, $a2
     jr $ra
 
-NameNotFoundNextIter:
+NameNotFoundNextBlock:
     addi $a3, -1
     beq $a3, 0, NameNotFound
     addi $a2, 4
