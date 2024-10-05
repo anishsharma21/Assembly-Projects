@@ -53,6 +53,7 @@ ChoiceErr: .asciiz "\nInvalid choice. Choose from a, f, d or q.\n"
 NoAllocationErr: .asciiz "\nNothing to free\n"
 MallocListCountErr: .asciiz "\nNegative malloc list count encountered."
 NameNotFoundErr: .asciiz "\nName not found.\nTry again.\n\n"
+MiddleNodeNotFoundErr: .asciiz "\nAn in-between node was not found or deallocated.\n"
 
 newline: .asciiz "\n"
 sep: .asciiz ", "
@@ -443,9 +444,6 @@ free:
     lw $a0, ($a0)
     li $v0, 1
     syscall
-    la $a0, sep
-    li $v0, 4
-    syscall
     move $v0, $s0
     ###
 
@@ -454,6 +452,9 @@ free:
     jal RemoveMallocNode
 
     ###
+    la $a0, newline
+    li $v0, 4
+    syscall
     la $a0, MallocListCount
     lb $a0, ($a0)
     li $v0, 1
@@ -463,6 +464,14 @@ free:
     syscall
     la $a0, MallocListHeadPointer
     lw $a0, ($a0)
+    li $v0, 1
+    syscall
+    la $a0, sep
+    li $v0, 4
+    syscall
+    la $a0, MallocListHeadPointer
+    lw $a0, ($a0)
+    lw $a0, 4($a0)
     li $v0, 1
     syscall
     la $a0, sep
@@ -715,7 +724,7 @@ FindMiddleNode:
     # malloc count must be > 3 at start since target can't be head or tail pointer to get to this subroutine
     # since we are always checking next pointer, we initially skip head pointer
     # hence why we check if list count is <=1
-    ble $a1, 1, MallocNodeNotFound
+    ble $a1, 1, MiddleNodeNotFoundError
 
     # set slow node bp to fast node bp (which is just next bp)
     lw $t0, 4($t0)
@@ -726,6 +735,24 @@ FindMiddleNode:
     # decr malloc list count check and try finding middle node again
     addi $a1, -1
     j FindMiddleNode
+
+# t0 is prev pointer to target pointer, t1 is target pointer to remove from malloc list
+MiddleNodePointerFound:
+    # get next pointer of target node to remove from malloc list
+    lw $t2, 4($t1)
+
+    # set next pointer of node prev to target pointer to the next pointer in t2
+    sw $t2, 4($t0)
+
+    # decrement malloc list count
+    la $t0, MallocListCount
+    lb $t2, ($t0)
+    addi $t2, -1
+    sb $t2, ($t0)
+
+    # return target pointer to be allocated next in free list
+    move $v0, $t1
+    jr $ra
 
 ######################### DISPLAY #########################
 
@@ -892,6 +919,12 @@ NameLenError:
 # TODO needs to be used eventually
 NameNotUniqueError:
     la $a0, NameNotUniqueErr
+    li $v0, 4
+    syscall
+    j end
+
+MiddleNodeNotFoundError:
+    la $a0, MiddleNodeNotFoundErr
     li $v0, 4
     syscall
     j end
