@@ -422,9 +422,29 @@ free:
     # v0 will contain bp addr to mem block to free
     jal FindNameMallocList
 
+    ###
+    move $s0, $v0
+    la $a0, MallocListTailPointer
+    lw $a0, ($a0)
+    li $v0, 1
+    syscall
+    la $a0, sep
+    li $v0, 4
+    syscall
+    move $v0, $s0
+    ###
+
     # TODO remove node from malloc list and decr count
     move $a0, $v0
     jal RemoveMallocNode
+
+    ###
+    la $a0, MallocListTailPointer
+    lw $a0, ($a0)
+    li $v0, 1
+    syscall
+    j end
+    ###
 
     # TODO add node to tail of free list and incr count
 
@@ -590,13 +610,45 @@ RemoveMallocNode:
 # a0 is bp to node to remove (head node)
 RemoveMallocHeadNode:
     # get bp to next node after head node
-    lw $t0, 4($t0)
+    lw $t0, 4($a0)
 
     # store it as the new head
     la $t1, MallocListHeadPointer
     sw $t0, ($t1)
 
     # return with bp to removed malloc node, will be added to free list next
+    move $v0, $a0
+    jr $ra
+
+# a0 is bp to node to remove (tail node)
+RemoveMallocTailNode:
+    # malloc list len must be > 1 since head is checked first, so 1 node can't be tail
+    # start from head node and move until last second to last node, set that as new tail node
+    la $t0, MallocListHeadPointer
+    lw $t0, ($t0)
+    la $t1, MallocListCount
+    lb $t1, ($t1)
+
+    # if malloc node count > 2, loop until tail node found
+    bge $t1, 2, RemoveMallocTailNodeLoop
+
+# a0 is tail node pointer, t0 is cur node pointer, t1 is malloc node count
+RemoveMallocTailNodeLoop:
+    # malloc node count must be > 2, so next node can't be tail on initial run through
+    # important since we want to get 2nd to last node pointer to set as new tail node
+    # load in next node pointer
+    lw $t0, 4($t0)
+
+    # decr node count and check if 2 is reached
+    # if not, repeat loop until it is (to get 2nd last node pointer)
+    addi $t1, -1
+    bgt $t1, 2, RemoveMallocTailNodeLoop
+
+    # set new tail node by storing 2nd to last pointer
+    la $t1, MallocListTailPointer
+    sw $t0, ($t1)
+
+    # return with pointer to be added to free list (removed prev tail node)
     move $v0, $a0
     jr $ra
 
