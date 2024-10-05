@@ -424,6 +424,21 @@ free:
 
     ###
     move $s0, $v0
+    la $a0, MallocListHeadPointer
+    lw $a0, ($a0)
+    li $v0, 1
+    syscall
+    la $a0, sep
+    li $v0, 4
+    syscall
+    la $a0, MallocListHeadPointer
+    lw $a0, ($a0)
+    lw $a0, 4($a0)
+    li $v0, 1
+    syscall
+    la $a0, sep
+    li $v0, 4
+    syscall
     la $a0, MallocListTailPointer
     lw $a0, ($a0)
     li $v0, 1
@@ -439,6 +454,20 @@ free:
     jal RemoveMallocNode
 
     ###
+    la $a0, MallocListCount
+    lb $a0, ($a0)
+    li $v0, 1
+    syscall
+    la $a0, newline
+    li $v0, 4
+    syscall
+    la $a0, MallocListHeadPointer
+    lw $a0, ($a0)
+    li $v0, 1
+    syscall
+    la $a0, sep
+    li $v0, 4
+    syscall
     la $a0, MallocListTailPointer
     lw $a0, ($a0)
     li $v0, 1
@@ -616,6 +645,12 @@ RemoveMallocHeadNode:
     la $t1, MallocListHeadPointer
     sw $t0, ($t1)
 
+    # decrement malloc list count
+    la $t0, MallocListCount
+    lb $t1, ($t0)
+    addi $t1, -1
+    sb $t1, ($t0)
+
     # return with bp to removed malloc node, will be added to free list next
     move $v0, $a0
     jr $ra
@@ -630,7 +665,21 @@ RemoveMallocTailNode:
     lb $t1, ($t1)
 
     # if malloc node count > 2, loop until tail node found
-    bge $t1, 2, RemoveMallocTailNodeLoop
+    bgt $t1, 2, RemoveMallocTailNodeLoop
+
+    # if only 2 nodes, then set tail pointer as head pointer too, 
+    la $t1, MallocListTailPointer
+    sw $t0, ($t1)
+
+    # decrement malloc list count
+    la $t0, MallocListCount
+    lb $t1, ($t0)
+    addi $t1, -1
+    sb $t1, ($t0)
+
+    # then return freed node pointer
+    move $v0, $a0
+    jr $ra
 
 # a0 is tail node pointer, t0 is cur node pointer, t1 is malloc node count
 RemoveMallocTailNodeLoop:
@@ -647,6 +696,12 @@ RemoveMallocTailNodeLoop:
     # set new tail node by storing 2nd to last pointer
     la $t1, MallocListTailPointer
     sw $t0, ($t1)
+
+    # decrement malloc list count
+    la $t0, MallocListCount
+    lb $t1, ($t0)
+    addi $t1, -1
+    sb $t1, ($t0)
 
     # return with pointer to be added to free list (removed prev tail node)
     move $v0, $a0
