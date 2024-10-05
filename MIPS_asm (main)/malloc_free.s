@@ -21,7 +21,6 @@ MallocListCount: .byte 0
 FreeListHeadPointer: .space 4
 .align 2
 FreeListTailPointer: .space 4
-FreeListBP: .space 4
 FreeListCount: .byte 0
 FreeListCap: .byte 4
 
@@ -229,10 +228,12 @@ GetAllocAddr:
     beq $t0, 0, ManagedHeapAlloc
 
     # TODO using the free list linked list pointers instead
-    la $t1, FreeListBP
-    lw $t1, ($t1)
-    lw $t1, ($t1)                                       # pointer to first addr in free list
-    j SearchFreeList
+    la $a0, newline
+    li $v0, 4
+    syscall
+    la $a0, sep
+    syscall
+    j end
 
 # a0 is new block size
 ManagedHeapAlloc:
@@ -420,71 +421,18 @@ free:
     lb $a1, ($a1)
     jal DisplayBlockNames
 
-    # v0 will contain bp addr to mem block to free
+    # v0 will contain bp addr to malloc node to remove from malloc and add to free list
     jal FindNameMallocList
 
-    ###
-    move $s0, $v0
-    la $a0, MallocListHeadPointer
-    lw $a0, ($a0)
-    li $v0, 1
-    syscall
-    la $a0, sep
-    li $v0, 4
-    syscall
-    la $a0, MallocListHeadPointer
-    lw $a0, ($a0)
-    lw $a0, 4($a0)
-    li $v0, 1
-    syscall
-    la $a0, sep
-    li $v0, 4
-    syscall
-    la $a0, MallocListTailPointer
-    lw $a0, ($a0)
-    li $v0, 1
-    syscall
-    move $v0, $s0
-    ###
-
-    # TODO remove node from malloc list and decr count
+    # remove malloc node based on its bp
     move $a0, $v0
     jal RemoveMallocNode
 
-    ###
-    la $a0, newline
-    li $v0, 4
-    syscall
-    la $a0, MallocListCount
-    lb $a0, ($a0)
-    li $v0, 1
-    syscall
-    la $a0, newline
-    li $v0, 4
-    syscall
-    la $a0, MallocListHeadPointer
-    lw $a0, ($a0)
-    li $v0, 1
-    syscall
-    la $a0, sep
-    li $v0, 4
-    syscall
-    la $a0, MallocListHeadPointer
-    lw $a0, ($a0)
-    lw $a0, 4($a0)
-    li $v0, 1
-    syscall
-    la $a0, sep
-    li $v0, 4
-    syscall
-    la $a0, MallocListTailPointer
-    lw $a0, ($a0)
-    li $v0, 1
-    syscall
-    j end
-    ###
-
-    # TODO add node to tail of free list and incr count
+    # add removed malloc node to tail of free list
+    move $a0, $v0
+    la $a1, FreeListTailPointer
+    lw $a1, ($a1)
+    jal AddFreeNode
 
     j MainLoop
 
@@ -754,6 +702,38 @@ MiddleNodePointerFound:
     move $v0, $t1
     jr $ra
 
+# a0 is bp to node to add to free list, a1 is free list tail node pointer
+AddFreeNode:
+    # incr free list count
+    la $t0, FreeListCount
+    lb $t1, ($t0)
+    addi $t1, 1
+    sb $t1, ($t0)
+
+    # if free list was not empty, add free node to tail
+    la $t0, FreeListCount
+    lb $t0, ($t0)
+    bgt $t0, 1, AddFreeNodeToTail
+
+    # else set tail and head pointer for free list as removed node (single node in list)
+    la $t1, FreeListHeadPointer
+    sw $a0, ($t1)
+    la $t1, FreeListTailPointer
+    sw $a0, ($t1)
+
+    jr $ra
+
+# a0 is bp to node to add to free list, a1 is free list tail node pointer
+AddFreeNodeToTail:
+    # store removed node as next node pointer in cur tail node
+    sw $a0, 4($a1)
+
+    # store new node's pointer in free list tail pointer
+    la $t1, FreeListTailPointer
+    sw $a0, ($t1)
+
+    jr $ra
+
 ######################### DISPLAY #########################
 
 DisplayHeap:
@@ -908,7 +888,7 @@ HeapEmptyError:
     la $a0, HeapEmptyErr
     li $v0, 4
     syscall
-    j end
+    j MainLoop
 
 NameLenError:
     la $a0, NameLenErr
