@@ -421,24 +421,10 @@ free:
 
     # v0 will contain bp addr to mem block to free
     jal FindNameMallocList
-    move $s0, $v0
-
-    ###
-    la $a0, MallocListHeadPointer
-    lw $a0, ($a0)
-    lw $a0, 4($a0)
-    li $v0, 1
-    syscall
-    la $a0, newline
-    li $v0, 4
-    syscall
-    move $a0, $s0
-    li $v0, 1
-    syscall
-    j end
-    ###
 
     # TODO remove node from malloc list and decr count
+    move $a0, $v0
+    jal RemoveMallocNode
 
     # TODO add node to tail of free list and incr count
 
@@ -580,6 +566,59 @@ NameNotFound:
     syscall
     j FindNameMallocList
 
+# a0 is bp to node that needs to be removed
+RemoveMallocNode:
+    # check if node is head pointer and remove separately if so
+    la $t0, MallocListHeadPointer
+    lw $t0, ($t0)
+    beq $t0, $a0, RemoveMallocHeadNode
+
+    # check if node is tail pointer and remove separately if so
+    la $t0, MallocListTailPointer
+    lw $t0, ($t0)
+    beq $t0, $a0, RemoveMallocTailNode
+
+    # not head or tail pointer, so must be in-between node
+    # using 2 pointer method, one to head, one to next, keep incr until a0 pointer reached
+    la $t0, MallocListHeadPointer
+    lw $t0, ($t0)
+    lw $t1, 4($t0)
+    la $a1, MallocListCount
+    lb $a1, ($a1)
+    j FindMiddleNode
+
+# a0 is bp to node to remove (head node)
+RemoveMallocHeadNode:
+    # get bp to next node after head node
+    lw $t0, 4($t0)
+
+    # store it as the new head
+    la $t1, MallocListHeadPointer
+    sw $t0, ($t1)
+
+    # return with bp to removed malloc node, will be added to free list next
+    move $v0, $a0
+    jr $ra
+
+# a0 is target node pointer, a1 is malloc list count, t0 is slow node pointer, t1 is fast node pointer
+FindMiddleNode:
+    # check if fast pointer is the target pointer to remove from malloc list
+    beq $t1, $a0, MiddleNodePointerFound
+
+    # malloc count must be > 3 at start since target can't be head or tail pointer to get to this subroutine
+    # since we are always checking next pointer, we initially skip head pointer
+    # hence why we check if list count is <=1
+    ble $a1, 1, MallocNodeNotFound
+
+    # set slow node bp to fast node bp (which is just next bp)
+    lw $t0, 4($t0)
+
+    # set fast node bp to it's next bp
+    lw $t1, 4($t1)
+
+    # decr malloc list count check and try finding middle node again
+    addi $a1, -1
+    j FindMiddleNode
 
 ######################### DISPLAY #########################
 
