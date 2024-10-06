@@ -41,7 +41,7 @@ MemoryStr: .asciiz "\nMemory: "
 BlockNamesStr: .asciiz "\nVariable names: "
 BlockNamePromptStr: .asciiz "Variable you'd like to free: "
 AllocatedBlockCountStr: .asciiz "\nNumber of variables: "
-FreeListAllocAddr: .asciiz "\n ### Reusing a freed block ###\n"
+FreeListAllocAddrStr: .asciiz "\n ### Reusing a freed block ###\n"
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -228,12 +228,11 @@ GetAllocAddr:
     beq $t0, 0, ManagedHeapAlloc
 
     # TODO using the free list linked list pointers instead
-    la $a0, newline
-    li $v0, 4
-    syscall
-    la $a0, sep
-    syscall
-    j end
+    la $a1, FreeListHeadPointer
+    lw $a1, ($a1)
+    la $a2, FreeListCount
+    lb $a2, ($a2)
+    j SearchFreeList
 
 # a0 is new block size
 ManagedHeapAlloc:
@@ -325,10 +324,29 @@ CreateMallocTailNode:
 
     jr $ra
 
-# TODO not complete
+# a0 is size required for new mem block, a1 is free list head pointer, a2 is free list count (mut)
 SearchFreeList:
-    lb $a0, ($t1)
-    li $v0, 1
+    # dereference cur node pointer to get len of freed mem block
+    lw $t1, ($a1)
+    lb $t1, ($t1)
+
+    # if len of freed block and new mem block equal, reuse freed block for alloc
+    beq $t1, $a0, ReuseFreedBlock
+
+    # else decr free list count and proceed to next iter if count > 0
+    # load in next pointer too
+    addi $a2, -1
+    lw $a1, 4($a1)
+    bgt $a2, 0, SearchFreeList
+
+    # else free list finished, proceed with heap alloc
+    j ManagedHeapAlloc
+
+# TODO complete implementation (store len and name)
+# a0 is len byte for new node, a1 is pointer to node in list to be reused
+ReuseFreedBlock:
+    la $a0, FreeListAllocAddrStr
+    li $v0, 4
     syscall
     j end
 
