@@ -41,7 +41,7 @@ MemoryStr: .asciiz "\nMemory: "
 BlockNamesStr: .asciiz "\nVariable names: "
 BlockNamePromptStr: .asciiz "Variable you'd like to free: "
 AllocatedBlockCountStr: .asciiz "\nNumber of variables: "
-FreeListAllocAddrStr: .asciiz "\n ### Reusing a freed block ###\n"
+FreeListNodeReusedStr: .asciiz "\n ### Reusing a freed block ###\n"
 
 MallocErr: .asciiz "\nMemory allocation error occurred!\n"
 NameLenErr: .asciiz "\nName must be at least 1 char long\n"
@@ -98,6 +98,7 @@ MainLoop:
     li $v0, 8
     syscall
 
+    # TODO add case 'D' for printing all bytes in heap from BP to NP
     # switch-case for users choice
     la $a0, ChoiceBuffer
     lb $a0, ($a0)
@@ -342,13 +343,46 @@ SearchFreeList:
     # else free list finished, proceed with heap alloc
     j ManagedHeapAlloc
 
-# TODO complete implementation (store len and name)
-# a0 is len byte for new node, a1 is pointer to node in list to be reused
+# a1 is pointer to node in list to be reused
 ReuseFreedBlock:
-    la $a0, FreeListAllocAddrStr
+    # remove node from free list
+    addi $sp, -4
+    sw $ra, ($sp)
+    # TODO
+    jal RemoveFreeListNode
+    lw $ra, ($sp)
+    addi $sp, 4
+
+    # add node to malloc list
+    addi $sp, -4
+    sw $ra, ($sp)
+    # TODO
+    jal AddMallocListNode
+    lw $ra, ($sp)
+    addi $sp, 4
+
+    # incr malloc list count
+    la $a0, MallocListCount
+    lb $t0, ($a0)
+    addi $t0, 1
+    sb $t0, ($a0)
+
+    # decr free list count
+    la $a0, FreeListCount
+    lb $t0, ($a0)
+    addi $t0, -1
+    sb $t0, ($a0)
+
+    # print reused node success message
+    la $a0, FreeListNodeReusedStr
     li $v0, 4
     syscall
-    j end
+
+    # incr malloc list count
+    # then just return base pointer to reused node and MallocMain will handle the rest
+    # value of a good, loosely coupled, orthogonal interface
+    move $v0, $a1
+    jr $ra
 
 # a0 is base addr of name buffer, a1 is addr for alloc
 StoreName:
