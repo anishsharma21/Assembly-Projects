@@ -343,35 +343,24 @@ SearchFreeList:
     # else free list finished, proceed with heap alloc
     j ManagedHeapAlloc
 
+# TODO this procedure could be replaced almost completely with a call directly to Remove malloc node (which should be turned into remove node once refactored), only problem is a1 needs to actually be in a0, but this can be modified at the point of call
 # a1 is pointer to node in list to be reused
 ReuseFreedBlock:
     # remove node from free list
     addi $sp, -4
     sw $ra, ($sp)
-    # TODO
-    jal RemoveFreeListNode
+    # TODO use correct args, follows after refactoring of the procedure
+    jal RemoveMallocNode
     lw $ra, ($sp)
     addi $sp, 4
 
     # add node to malloc list
     addi $sp, -4
     sw $ra, ($sp)
-    # TODO
-    jal AddMallocListNode
+    # TODO use correct args, follows after refactoring of the procedure
+    jal AddFreeNode
     lw $ra, ($sp)
     addi $sp, 4
-
-    # incr malloc list count
-    la $a0, MallocListCount
-    lb $t0, ($a0)
-    addi $t0, 1
-    sb $t0, ($a0)
-
-    # decr free list count
-    la $a0, FreeListCount
-    lb $t0, ($a0)
-    addi $t0, -1
-    sb $t0, ($a0)
 
     # print reused node success message
     la $a0, FreeListNodeReusedStr
@@ -624,7 +613,8 @@ NameNotFound:
     syscall
     j FindNameMallocList
 
-# a0 is bp to node that needs to be removed
+# TODO could make RemoveMallocNode simply RemoveNode by having args for the specific list being passed in, like the head pointer, tail pointer, and the count
+# a0 is bp to node that needs to be removed, a1 is head pointer to list of interest, a2 is tail pointer to list of interest, and a3 is node count for list of interest
 RemoveMallocNode:
     # check if node is head pointer and remove separately if so
     la $t0, MallocListHeadPointer
