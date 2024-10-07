@@ -2,7 +2,7 @@
 
 ## Summary and Highlights
 
-### Major Project: [Memory Allocator/Deallocator](https://github.com/anishsharma21/Assembly-Projects/blob/main/MIPS_asm%20(main)/malloc_free.s) (in progress)
+### Major Project: [Memory Allocator/Deallocator](https://github.com/anishsharma21/Assembly-Projects/blob/main/MIPS_asm%20(main)/malloc_free.s)
 * Written in MIPS assembly
 * Dynamic memory allocation/deallocation in a self-managed heap
 * Dynamic resizing of heap, alloc-list, and free-list
